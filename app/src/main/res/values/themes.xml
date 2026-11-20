@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.ReelScout" parent="Theme.Material3.Dark.NoActionBar">
+        <item name="colorPrimary">@color/rs_primary</item>
+        <item name="colorOnPrimary">#FFFFFF</item>
+        <item name="colorPrimaryContainer">@color/rs_primary_container</item>
+        <item name="colorOnPrimaryContainer">#E9DDFF</item>
+        <item name="colorSecondary">@color/rs_accent</item>
+        <item name="colorSecondaryContainer">@color/rs_primary_container</item>
+        <item name="colorOnSecondaryContainer">#FFFFFF</item>
+        <item name="android:colorBackground">@color/rs_bg</item>
+        <item name="colorSurface">@color/rs_surface</item>
+        <item name="colorSurfaceContainer">@color/rs_surface</item>
+        <item name="colorSurfaceContainerHigh">@color/rs_surface_high</item>
+        <item name="colorOnSurface">@color/rs_text</item>
+        <item name="colorOnSurfaceVariant">@color/rs_text_dim</item>
+        <item name="colorOutline">@color/rs_outline</item>
+        <item name="android:statusBarColor">@color/rs_bg</item>
+        <item name="android:navigationBarColor">@color/rs_bg</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+
+    <style name="RS.Card" parent="Widget.Material3.CardView.Filled">
+        <item name="cardBackgroundColor">@color/rs_surface</item>
+        <item name="cardCornerRadius">20dp</item>
+        <item name="cardElevation">0dp</item>
+        <item name="strokeColor">@color/rs_outline</item>
+        <item name="strokeWidth">1dp</item>
+    </style>
+
+    <style name="RS.SectionTitle">
+        <item name="android:textColor">@color/rs_text</item>
+        <item name="android:textSize">16sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:layout_marginBottom">6dp</item>
+    </style>
+
+    <style name="RS.Label">
+        <item name="android:textColor">@color/rs_text_dim</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:layout_marginTop">14dp</item>
+    </style>
+
+    <style name="RS.Switch" parent="Widget.Material3.CompoundButton.MaterialSwitch">
+        <item name="android:textColor">@color/rs_text</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:minHeight">52dp</item>
+    </style>
+
+    <style name="RS.StatValue">
+        <item name="android:textColor">@color/rs_text</item>
+        <item name="android:textSize">24sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <style name="RS.StatLabel">
+        <item name="android:textColor">@color/rs_text_dim</item>
+        <item name="android:textSize">12sp</item>
+    </style>
+</resources>

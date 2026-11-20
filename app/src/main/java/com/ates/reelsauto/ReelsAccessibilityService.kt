@@ -3,9 +3,7 @@ package com.ates.reelsauto
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.AccessibilityService.ScreenshotResult
 import android.accessibilityservice.AccessibilityService.TakeScreenshotCallback
-import android.accessibilityservice.GestureDescription
 import android.graphics.Bitmap
-import android.graphics.Path
 import android.graphics.Rect
 import android.os.Build
 import android.os.Handler
@@ -24,13 +22,14 @@ import androidx.annotation.RequiresApi
 import java.util.ArrayDeque
 
 /**
- * Akış (her Reels için):
- *  SETTLING  → ekran otursun diye kısa, rastgele bekleme
- *  ANALYZING → metinleri oku + ekran görüntüsü al (OCR + görsel etiket) + dil tespiti
- *      İngilizce değilse → SKIPPING (kısa tepki süresiyle geç)
- *      İngilizce ise     → ürün puanı hesapla → WATCHING
- *  WATCHING  → rastgele süre izle, ek karelerle derin analiz, ürünse olasılıkla beğen
- *  sonunda   → CSV'ye kaydet → doğal kaydırma → sonraki Reels
+ * ReelScout akışı (her Reels için):
+ *  SETTLING  → göz ekrana otursun (rastgele)
+ *  EXPANDING → açıklamanın "devamı"na dokun, tam metni oku (isteğe bağlı)
+ *  ANALYZING → metin + ekran görüntüsü (OCR, görsel etiket) + dil tespiti
+ *      İngilizce değil → SKIPPING (kısa tepki süresiyle geç)
+ *      İngilizce       → ürün puanı → WATCHING
+ *  WATCHING  → rastgele süre izle, ek karelerle derin analiz, ürünse beğen, kesin ürün hesabıysa takip et
+ *  sonunda   → kaydet → (ara sıra) geri dön ve önceki videoyu tekrar izle (REWATCH) → kaydır
  */
 class ReelsAccessibilityService : AccessibilityService() {
 
@@ -47,9 +46,10 @@ class ReelsAccessibilityService : AccessibilityService() {
         private val UNLIKE_WORDS = setOf("unlike", "liked", "beğenildi", "beğenmekten vazgeç")
     }
 
-    private enum class Phase { SETTLING, ANALYZING, WATCHING, SKIPPING }
+    private enum class Phase { SETTLING, EXPANDING, ANALYZING, WATCHING, SKIPPING, REWATCH }
+    /** NORMAL: yeni video, BACK: tekrar izlemek için geri dönüldü, RETURN: tekrar izlemeden sonra ileri dönüldü */
+    private enum class Kind { NORMAL, BACK, RETURN }
 
-    /** O anki Reels'e ait analiz verileri */
     private class ReelState {
         var screen: ReelScreen? = null
         var lang = "?"
@@ -61,6 +61,8 @@ class ReelsAccessibilityService : AccessibilityService() {
 
     private lateinit var prefs: Prefs
     private lateinit var logger: ReelLogger
+    private lateinit var accounts: AccountStore
+    private lateinit var gestures: Gestures
     private var vision: VisionHelper? = null
     private val handler = Handler(Looper.getMainLooper())
 
@@ -68,44 +70,54 @@ class ReelsAccessibilityService : AccessibilityService() {
     private var paused = false
     private var ticking = false
     private var lastDetectAt = 0L
-    private var lastOwnGestureAt = 0L
+    private var gestureBusy = false
 
-    // Reels durumu
     private var reelId = 0
     private var phase = Phase.SETTLING
+    private var kind = Kind.NORMAL
     private var cur = ReelState()
     private var reelStart = 0L
     private var settleMs = 1000L
+    private var expandUntil = 0L
     private var analyzeStartedAt = 0L
     private var skipAt = 0L
     private var watchMs = Long.MAX_VALUE
     private var likeAtMs = -1L
     private var likeDecided = false
     private var liked = false
+    private var followAtMs = -1L
+    private var followDecided = false
+    private var followed = false
     private var frameBusy = false
 
-    // Mola
-    private var sessionEndsAt = 0L
-    private var breakUntil = 0L
-    private var swipeAfterBreak = false
+    // Bir önceki videonun sonucu (tekrar izleme kararı için)
+    private var prevWorthy = false
+    private var prevWatched = false
 
-    // Saatlik beğeni limiti
+    // Mola / dikkat dağınıklığı
+    private var holdUntil = 0L
+    private var swipeAfterHold = false
+    private var sessionEndsAt = 0L
+
     private val likeTimes = ArrayDeque<Long>()
+    private val followTimes = ArrayDeque<Long>()
 
     private var screenW = 1080
     private var screenH = 1920
 
     private val visionAvailable get() = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && vision != null
 
-    // ================================================================ lifecycle
+    // ================================================================ yaşam döngüsü
 
     override fun onServiceConnected() {
         super.onServiceConnected()
         prefs = Prefs(this)
         logger = ReelLogger(this)
+        accounts = AccountStore(this)
         vision = try { VisionHelper() } catch (e: Throwable) { Log.w(TAG, "ML Kit başlatılamadı", e); null }
         readScreenSize()
-        Log.i(TAG, "Servis bağlandı (görüntü analizi: $visionAvailable)")
+        gestures = Gestures(this, screenW, screenH)
+        Log.i(TAG, "ReelScout bağlandı (görüntü analizi: $visionAvailable)")
     }
 
     override fun onInterrupt() = stopTicking()
@@ -116,7 +128,7 @@ class ReelsAccessibilityService : AccessibilityService() {
         super.onDestroy()
     }
 
-    // ================================================================ events
+    // ================================================================ olaylar
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         event ?: return
@@ -126,12 +138,12 @@ class ReelsAccessibilityService : AccessibilityService() {
         }
         val now = SystemClock.uptimeMillis()
 
-        // Kullanıcı elle kaydırdıysa (bizim hareketimiz değilse) yeni Reels say
-        if (event.eventType == AccessibilityEvent.TYPE_VIEW_SCROLLED && onReels &&
-            now - lastOwnGestureAt > 1500 && now - reelStart > 1000
+        // Kullanıcı kendi eliyle kaydırdıysa yeni video say
+        if (event.eventType == AccessibilityEvent.TYPE_VIEW_SCROLLED && onReels && !gestureBusy &&
+            now - gestures.lastGestureAt > 1500 && now - reelStart > 1000
         ) {
             val cls = event.className?.toString() ?: ""
-            if (cls.contains("ViewPager") || cls.contains("RecyclerView")) startNewReel()
+            if (cls.contains("ViewPager") || cls.contains("RecyclerView")) startNewReel(Kind.NORMAL)
         }
 
         if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED || now - lastDetectAt > DETECT_INTERVAL_MS) {
@@ -146,32 +158,33 @@ class ReelsAccessibilityService : AccessibilityService() {
         if (event.keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) {
             if (event.action == KeyEvent.ACTION_DOWN) {
                 paused = !paused
-                if (!paused) startNewReel()
-                toast(if (paused) "⏸ Duraklatıldı" else "▶ Devam ediyor")
+                if (!paused) startNewReel(Kind.NORMAL)
+                toast(if (paused) "⏸ ReelScout duraklatıldı" else "▶ ReelScout devam ediyor")
             }
             return true
         }
         return false
     }
 
-    // ================================================================ reels ekranı
+    // ================================================================ Reels ekranı
 
     private fun updateReelsState() {
         val root = rootInActiveWindow
         val isReels = root != null && root.packageName?.toString() == IG_PACKAGE && isReelsScreen(root)
         if (isReels && !onReels) enterReels()
-        else if (!isReels && onReels) leaveReels()
+        else if (!isReels && onReels && phase != Phase.EXPANDING) leaveReels()
     }
 
     private fun enterReels() {
         onReels = true
-        if (prefs.enabled) toast("▶ Reels otomasyonu başladı (Ses kısma = duraklat)")
-        startNewReel()
+        if (prefs.enabled) toast("▶ ReelScout başladı (Ses kısma = duraklat)")
+        startNewReel(Kind.NORMAL)
         startTicking()
     }
 
     private fun leaveReels() {
         onReels = false
+        gestureBusy = false
         stopTicking()
     }
 
@@ -209,68 +222,123 @@ class ReelsAccessibilityService : AccessibilityService() {
         handler.removeCallbacks(tick)
     }
 
-    private fun startNewReel() {
+    private fun startNewReel(k: Kind) {
         reelId++
         cur = ReelState()
+        kind = k
         phase = Phase.SETTLING
         reelStart = SystemClock.uptimeMillis()
         settleMs = HumanTiming.settleMs()
         watchMs = Long.MAX_VALUE
-        likeAtMs = -1L
-        likeDecided = false
-        liked = false
+        likeAtMs = -1L; likeDecided = false; liked = false
+        followAtMs = -1L; followDecided = false; followed = false
         frameBusy = false
     }
 
     private fun step() {
         if (!prefs.enabled || paused || !onReels) return
+        val now = SystemClock.uptimeMillis()
+
+        // Hareket sürerken bekle (takılırsa 4 sn sonra kurtar)
+        if (gestureBusy) {
+            if (now - gestures.lastGestureAt > 4000) { gestureBusy = false; startNewReel(Kind.NORMAL) }
+            return
+        }
+
         val pm = getSystemService(POWER_SERVICE) as PowerManager
         if (!pm.isInteractive) return
 
         val root = rootInActiveWindow
         if (root == null || root.packageName?.toString() != IG_PACKAGE) { leaveReels(); return }
 
-        val now = SystemClock.uptimeMillis()
+        HumanTiming.updateMood(now)
 
-        // --- Mola yönetimi
-        if (prefs.breaksEnabled) {
-            if (breakUntil > now) return
-            if (swipeAfterBreak) { swipeAfterBreak = false; doSwipe(); return }
-            if (sessionEndsAt == 0L) sessionEndsAt = now + HumanTiming.sessionMs()
-        }
+        // Mola / dikkat dağınıklığı
+        if (holdUntil > now) return
+        if (swipeAfterHold) { swipeAfterHold = false; moveNext(); return }
+        if (prefs.breaksEnabled && sessionEndsAt == 0L) sessionEndsAt = now + HumanTiming.sessionMs()
 
         val el = now - reelStart
         when (phase) {
-            Phase.SETTLING -> if (el >= settleMs) startAnalysis(root)
+            Phase.SETTLING -> if (el >= settleMs) onSettled(root, now)
+
+            Phase.EXPANDING -> if (now >= expandUntil) {
+                val again = ReelScreenReader.read(root, screenW, screenH)
+                cur.screen = merge(cur.screen, again)
+                startAnalysis()
+            }
 
             Phase.ANALYZING -> if (now - analyzeStartedAt > ANALYZE_TIMEOUT_MS) decide("und")
 
             Phase.SKIPPING -> if (now >= skipAt) finishReel("dil-gecildi")
 
+            Phase.REWATCH -> if (el >= watchMs) {
+                if (kind == Kind.BACK) swipe(up = true, nextKind = Kind.RETURN) else moveNext()
+            }
+
             Phase.WATCHING -> {
-                // Derin analiz için ek kareler
                 if (cur.frameTimes.isNotEmpty() && el >= cur.frameTimes[0] && !frameBusy) {
                     cur.frameTimes.removeAt(0)
                     val id = reelId
                     captureAndAnalyze(id) { onExtraFrame(id) }
                 }
-                // Beğeni
                 if (likeAtMs >= 0 && !liked && el >= likeAtMs) {
                     likeAtMs = -1
                     if (canLike() && tryLike(root)) { liked = true; registerLike() }
                 }
-                // Sonraki Reels
+                if (followAtMs >= 0 && !followed && el >= followAtMs) {
+                    followAtMs = -1
+                    if (canFollow() && tryFollow(root)) registerFollow()
+                }
                 if (el >= watchMs) finishReel("izlendi")
             }
         }
     }
 
+    private fun onSettled(root: AccessibilityNodeInfo, now: Long) {
+        if (kind != Kind.NORMAL) {
+            // Tekrar izleme: geri dönülen videoyu birkaç saniye izle, ileri dönüşte kısa bak
+            phase = Phase.REWATCH
+            val el = now - reelStart
+            watchMs = el + if (kind == Kind.BACK) HumanTiming.between(3_000, 12_000) else HumanTiming.between(700, 2_600)
+            return
+        }
+        val s = ReelScreenReader.read(root, screenW, screenH)
+        cur.screen = s
+        val more = s.moreButton
+        if (prefs.captionExpand && more != null && HumanTiming.chance(0.8)) {
+            val target = clickableAncestor(more) ?: more
+            gestures.markOwnAction()
+            if (target.performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
+                phase = Phase.EXPANDING
+                expandUntil = now + HumanTiming.between(900, 1_700)
+                return
+            }
+        }
+        startAnalysis()
+    }
+
+    private fun merge(a: ReelScreen?, b: ReelScreen): ReelScreen {
+        if (a == null) return b
+        return ReelScreen(
+            user = b.user.ifEmpty { a.user },
+            caption = if (b.caption.length > a.caption.length) b.caption else a.caption,
+            audio = b.audio.ifEmpty { a.audio },
+            metrics = b.metrics.ifEmpty { a.metrics },
+            allText = a.allText + " | " + b.allText,
+            sponsored = a.sponsored || b.sponsored,
+            shopButton = a.shopButton || b.shopButton,
+            moreButton = null,
+            followButton = b.followButton ?: a.followButton,
+            following = a.following || b.following
+        )
+    }
+
     // ================================================================ analiz
 
-    private fun startAnalysis(root: AccessibilityNodeInfo) {
+    private fun startAnalysis() {
         phase = Phase.ANALYZING
         analyzeStartedAt = SystemClock.uptimeMillis()
-        cur.screen = ReelScreenReader.read(root, screenW, screenH)
         val id = reelId
         if (visionAvailable) captureAndAnalyze(id) { runLanguage(id) } else runLanguage(id)
     }
@@ -281,9 +349,7 @@ class ReelsAccessibilityService : AccessibilityService() {
         val text = (cur.screen?.caption ?: "") + " " + cur.ocr.joinToString(" ")
         val v = vision
         if (v == null) { decide("und"); return }
-        v.identifyLanguage(text) { lang ->
-            if (id == reelId && phase == Phase.ANALYZING) decide(lang)
-        }
+        v.identifyLanguage(text) { lang -> if (id == reelId && phase == Phase.ANALYZING) decide(lang) }
     }
 
     private fun decide(lang: String) {
@@ -298,62 +364,89 @@ class ReelsAccessibilityService : AccessibilityService() {
             return
         }
 
-        val verdict = evaluateProduct()
+        val v = evaluateProduct()
         val el = now - reelStart
-        watchMs = el + HumanTiming.watchMs(prefs.minWatchSec, prefs.maxWatchSec, verdict.isProduct)
+        watchMs = el + HumanTiming.watchMs(prefs.minWatchSec, prefs.maxWatchSec, v.likeWorthy)
 
-        // Ürün videolarında 2, diğerlerinde 1 ek kare (sonradan çıkan yazılar/CTA için)
         if (visionAvailable) {
-            val frames = if (verdict.isProduct) 2 else 1
+            val frames = if (v.likeWorthy || v.confidence >= Confidence.POSSIBLE) 2 else 1
             val from = el + 1500
             val to = watchMs - 800
             if (to > from) repeat(frames) { cur.frameTimes += HumanTiming.between(from, to) }
             cur.frameTimes.sort()
         }
-        if (verdict.isProduct) planLike()
+        if (v.likeWorthy) planLike()
+        planFollow()
         phase = Phase.WATCHING
-        Log.i(TAG, "Dil: $lang, ürün: ${verdict.isProduct} (${verdict.score}) ${verdict.signals}")
+        Log.i(TAG, "Dil: $lang | ürün: " + v.confidence.label + " (" + v.score + ") " + v.signals + " | mod: " + HumanTiming.mood.label)
     }
 
     private fun evaluateProduct(): ProductVerdict {
         val s = cur.screen
         val text = listOfNotNull(s?.caption, s?.allText).joinToString(" ") + " " + cur.ocr.joinToString(" ")
-        val v = ProductDetector.evaluate(text, s?.shopButton == true, cur.labels)
+        val user = s?.user ?: ""
+        val history = if (user.isNotBlank()) accounts.get(user).products else 0
+        val v = ProductDetector.evaluate(text, s?.shopButton == true, cur.labels, history, prefs.sensitivity)
         cur.verdict = v
         return v
     }
 
-    /** Ek kare analiz edildikten sonra: sonradan beliren CTA ile ürün tespit edilebilir */
     private fun onExtraFrame(id: Int) {
         if (id != reelId || phase != Phase.WATCHING) return
-        val wasProduct = cur.verdict?.isProduct == true
+        val was = cur.verdict?.likeWorthy == true
         val v = evaluateProduct()
-        if (v.isProduct && !wasProduct) {
+        if (v.likeWorthy && !was) {
             val el = SystemClock.uptimeMillis() - reelStart
-            // Ürün olduğu sonradan anlaşıldı → biraz daha izle
-            watchMs = maxOf(watchMs, el + HumanTiming.between(4000, 10000))
+            watchMs = maxOf(watchMs, el + HumanTiming.between(4_000, 10_000))   // ürün olduğu sonradan anlaşıldı
             planLike()
         }
+        planFollow()
     }
 
     private fun planLike() {
         if (likeDecided) return
         likeDecided = true
         val sponsored = cur.screen?.sponsored == true
-        val want = prefs.likeEnabled &&
-                (!sponsored || prefs.likeAds) &&
-                HumanTiming.chance(prefs.likeChance / 100.0)
-        if (!want) { likeAtMs = -1; return }
+        val want = prefs.likeEnabled && (!sponsored || prefs.likeAds) && HumanTiming.chance(prefs.likeChance / 100.0)
+        if (!want) return
         val el = SystemClock.uptimeMillis() - reelStart
         val at = el + ((watchMs - el) * HumanTiming.likeFraction()).toLong()
         likeAtMs = maxOf(at, el + 1500)
     }
 
+    /** Sadece KESİN ürün videosu paylaşan hesaplar takip edilir */
+    private fun planFollow() {
+        if (followDecided || !prefs.autoFollow) return
+        val v = cur.verdict ?: return
+        if (v.confidence != Confidence.CERTAIN) return
+        val s = cur.screen ?: return
+        if (s.user.isBlank() || s.following) return
+        val info = accounts.get(s.user)
+        if (info.followed) return
+        if (info.certain + 1 < prefs.followVideosNeeded) return
+        if (!canFollow()) return
+        followDecided = true
+        val el = SystemClock.uptimeMillis() - reelStart
+        val at = el + ((watchMs - el) * HumanTiming.followFraction()).toLong()
+        followAtMs = maxOf(at, el + 2_000, if (likeAtMs >= 0) likeAtMs + 1_500 else 0L)
+        if (followAtMs >= watchMs) watchMs = followAtMs + HumanTiming.between(1_500, 4_000)
+    }
+
     private fun canLike(): Boolean {
         if (prefs.likesToday >= prefs.dailyLikeCap) return false
-        val hourAgo = System.currentTimeMillis() - 3_600_000L
-        while (likeTimes.isNotEmpty() && likeTimes.peekFirst()!! < hourAgo) likeTimes.pollFirst()
+        prune(likeTimes)
         return likeTimes.size < prefs.hourlyLikeCap
+    }
+
+    private fun canFollow(): Boolean {
+        if (prefs.followsToday >= prefs.dailyFollowCap) return false
+        prune(followTimes)
+        return followTimes.size < 3
+    }
+
+    private fun prune(q: ArrayDeque<Long>) {
+        val hourAgo = System.currentTimeMillis() - 3_600_000L
+        while (q.isNotEmpty() && q.peekFirst()!! < hourAgo) q.pollFirst()
     }
 
     private fun registerLike() {
@@ -361,46 +454,149 @@ class ReelsAccessibilityService : AccessibilityService() {
         prefs.addLike()
     }
 
+    private fun registerFollow() {
+        followed = true
+        followTimes.addLast(System.currentTimeMillis())
+        prefs.addFollow()
+        cur.screen?.user?.let { accounts.markFollowed(it) }
+        Log.i(TAG, "Takip edildi: " + (cur.screen?.user ?: "?"))
+    }
+
     private fun finishReel(result: String) {
         val s = cur.screen
         val v = cur.verdict
-        if (v?.isProduct == true) {
+        val user = s?.user ?: ""
+        val worthy = v?.likeWorthy == true
+
+        if (result == "izlendi" && v != null) accounts.record(user, v.confidence)
+        if (worthy) {
             prefs.addProduct()
             prefs.lastProduct = buildString {
-                append(if (s?.user.isNullOrEmpty()) "?" else s!!.user)
+                append("@").append(user.ifEmpty { "?" })
+                append(" • ").append(v!!.confidence.label)
                 v.ctaKeyword?.let { append(" • Yorum: ").append(it) }
-                append(" • ").append((s?.caption ?: "").take(80))
+                if (liked) append(" • ♥")
+                if (followed) append(" • takip edildi")
+                append("\n").append((s?.caption ?: "").take(110))
             }
         }
         if (prefs.logEnabled) {
             logger.log(
                 ReelRecord(
-                    result = result, lang = cur.lang,
-                    isProduct = v?.isProduct == true, score = v?.score ?: 0,
+                    result = result, lang = cur.lang, isProduct = worthy,
+                    confidence = v?.confidence?.label ?: "-", score = v?.score ?: 0,
                     signals = v?.signals ?: emptyList(), cta = v?.ctaKeyword,
-                    liked = liked, sponsored = s?.sponsored == true,
-                    user = s?.user ?: "", audio = s?.audio ?: "", metrics = s?.metrics ?: emptyList(),
+                    liked = liked, followed = followed, sponsored = s?.sponsored == true,
+                    user = user, audio = s?.audio ?: "", metrics = s?.metrics ?: emptyList(),
                     caption = s?.caption ?: "", ocr = cur.ocr.toList(), labels = cur.labels.toList(),
-                    watchMs = SystemClock.uptimeMillis() - reelStart
+                    watchMs = SystemClock.uptimeMillis() - reelStart, mood = HumanTiming.mood.label
                 )
             )
         }
         prefs.addScroll()
 
-        // Mola zamanı geldiyse kaydırmadan önce ara ver
         val now = SystemClock.uptimeMillis()
+        val wasPrevWorthy = prevWorthy
+        val wasPrevWatched = prevWatched
+        prevWorthy = worthy
+        prevWatched = result == "izlendi"
+
+        // Mola zamanı
         if (prefs.breaksEnabled && sessionEndsAt in 1L until now) {
             val b = HumanTiming.breakMs()
-            breakUntil = now + b
-            sessionEndsAt = breakUntil + HumanTiming.sessionMs()
-            swipeAfterBreak = true
-            phase = Phase.SETTLING
-            reelStart = now
-            settleMs = Long.MAX_VALUE
-            toast("☕ ${b / 60000} dk mola, sonra kendiliğinden devam eder")
+            holdUntil = now + b
+            sessionEndsAt = holdUntil + HumanTiming.sessionMs()
+            swipeAfterHold = true
+            phase = Phase.SETTLING; settleMs = Long.MAX_VALUE
+            toast("☕ " + (b / 60000) + " dk mola, sonra kendiliğinden devam eder")
             return
         }
-        doSwipe()
+        // Ara sıra geri dönüp bir önceki videoyu tekrar izle (ürünse daha olası)
+        if (prefs.rewatchEnabled && wasPrevWatched && HumanTiming.chance(if (wasPrevWorthy) 0.15 else 0.03)) {
+            prefs.addRewatch()
+            prevWatched = false
+            swipe(up = false, nextKind = Kind.BACK)
+            return
+        }
+        // Kısa dikkat dağınıklığı (telefondan başını kaldırma)
+        if (HumanTiming.chance(0.025)) {
+            holdUntil = now + HumanTiming.distractionMs()
+            swipeAfterHold = true
+            phase = Phase.SETTLING; settleMs = Long.MAX_VALUE
+            return
+        }
+        moveNext()
+    }
+
+    // ================================================================ hareket
+
+    private fun moveNext() = swipe(up = true, nextKind = Kind.NORMAL)
+
+    private fun swipe(up: Boolean, nextKind: Kind) {
+        gestureBusy = true
+        val done: () -> Unit = { gestureBusy = false; startNewReel(nextKind) }
+        when {
+            !up -> gestures.swipePrevious(done)
+            nextKind == Kind.NORMAL && HumanTiming.chance(0.03) ->
+                gestures.abortedSwipe { handler.postDelayed({ gestures.swipeNext(done) }, HumanTiming.between(300, 800)) }
+            else -> gestures.swipeNext(done)
+        }
+    }
+
+    // ================================================================ beğeni / takip
+
+    private fun label(n: AccessibilityNodeInfo): String =
+        (n.contentDescription ?: n.text ?: "").toString().trim().lowercase()
+
+    private fun tryLike(root: AccessibilityNodeInfo): Boolean {
+        val screen = Rect(0, 0, screenW, screenH)
+        var likeNode: AccessibilityNodeInfo? = null
+        var alreadyLiked = false
+
+        walk(root) { n ->
+            if (!n.isVisibleToUser) return@walk false
+            val r = Rect(); n.getBoundsInScreen(r)
+            if (!Rect.intersects(r, screen) || r.centerY() < screenH * 0.25) return@walk false
+            val l = label(n)
+            if (l in UNLIKE_WORDS) alreadyLiked = true
+            else if (l in LIKE_WORDS && (likeNode == null || r.centerX() > screenW * 0.6)) {
+                if (n.isSelected) alreadyLiked = true else likeNode = n
+            }
+            false
+        }
+        if (alreadyLiked) return false
+
+        // İnsanlar bazen kalbe dokunur, bazen çift dokunur
+        val target = likeNode?.let { clickableAncestor(it) }
+        gestures.markOwnAction()
+        if (target != null && HumanTiming.chance(0.65) && target.performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
+            Log.i(TAG, "Beğenildi (kalp)")
+            return true
+        }
+        gestures.doubleTap()
+        Log.i(TAG, "Beğenildi (çift dokunma)")
+        return true
+    }
+
+    private fun tryFollow(root: AccessibilityNodeInfo): Boolean {
+        val expected = cur.screen?.user ?: return false
+        val s = ReelScreenReader.read(root, screenW, screenH)
+        if (s.following) return false
+        if (s.user.isNotEmpty() && !s.user.equals(expected, ignoreCase = true)) return false
+        val btn = s.followButton ?: return false
+        val target = clickableAncestor(btn) ?: btn
+        gestures.markOwnAction()
+        return target.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+    }
+
+    private fun clickableAncestor(node: AccessibilityNodeInfo): AccessibilityNodeInfo? {
+        var n: AccessibilityNodeInfo? = node
+        var depth = 0
+        while (n != null && depth < 5) {
+            if (n.isClickable) return n
+            n = n.parent; depth++
+        }
+        return null
     }
 
     // ================================================================ ekran görüntüsü
@@ -461,7 +657,6 @@ class ReelsAccessibilityService : AccessibilityService() {
         }
     }
 
-    /** Üst çubuk ve alt menüyü kırp, 720 px genişliğe küçült */
     private fun prepare(src: Bitmap): Bitmap {
         val top = (src.height * 0.06).toInt()
         val h = (src.height * 0.86).toInt().coerceAtMost(src.height - top)
@@ -472,96 +667,6 @@ class ReelsAccessibilityService : AccessibilityService() {
         val scaled = Bitmap.createScaledBitmap(cropped, 720, (cropped.height * scale).toInt(), true)
         if (scaled != cropped) cropped.recycle()
         return scaled
-    }
-
-    // ================================================================ beğeni
-
-    private fun label(n: AccessibilityNodeInfo): String =
-        (n.contentDescription ?: n.text ?: "").toString().trim().lowercase()
-
-    /** true → beğenildi */
-    private fun tryLike(root: AccessibilityNodeInfo): Boolean {
-        val screen = Rect(0, 0, screenW, screenH)
-        var likeNode: AccessibilityNodeInfo? = null
-        var alreadyLiked = false
-
-        walk(root) { n ->
-            if (!n.isVisibleToUser) return@walk false
-            val r = Rect(); n.getBoundsInScreen(r)
-            if (!Rect.intersects(r, screen) || r.centerY() < screenH * 0.25) return@walk false
-            val l = label(n)
-            if (l in UNLIKE_WORDS) alreadyLiked = true
-            else if (l in LIKE_WORDS && (likeNode == null || r.centerX() > screenW * 0.6)) {
-                if (n.isSelected) alreadyLiked = true else likeNode = n
-            }
-            false
-        }
-
-        if (alreadyLiked && likeNode == null) return false
-
-        val target = likeNode?.let { clickableAncestor(it) }
-        if (target != null && target.performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
-            Log.i(TAG, "Beğenildi (buton)")
-            return true
-        }
-        if (!alreadyLiked) {
-            doubleTapCenter()
-            Log.i(TAG, "Beğenildi (çift dokunma)")
-            return true
-        }
-        return false
-    }
-
-    private fun clickableAncestor(node: AccessibilityNodeInfo): AccessibilityNodeInfo? {
-        var n: AccessibilityNodeInfo? = node
-        var depth = 0
-        while (n != null && depth < 5) {
-            if (n.isClickable) return n
-            n = n.parent; depth++
-        }
-        return null
-    }
-
-    // ================================================================ hareketler
-
-    private fun doSwipe() {
-        swipeToNext()
-        startNewReel()
-    }
-
-    private fun swipeToNext() {
-        val x = screenW / 2f + HumanTiming.nextInt(-screenW / 8, screenW / 8)
-        val startY = screenH * HumanTiming.nextFloat(0.66f, 0.82f)
-        val endY = screenH * HumanTiming.nextFloat(0.14f, 0.30f)
-        val path = Path().apply {
-            moveTo(x, startY)
-            // Hafif kavisli, başparmak hareketine benzer
-            quadTo(
-                x + HumanTiming.nextInt(-50, 50), (startY + endY) / 2,
-                x + HumanTiming.nextInt(-40, 40), endY
-            )
-        }
-        // Çoğu zaman hızlı, ara sıra yavaş/tereddütlü kaydırma
-        val duration = if (HumanTiming.chance(0.1)) HumanTiming.between(450, 700) else HumanTiming.between(180, 420)
-        val gesture = GestureDescription.Builder()
-            .addStroke(GestureDescription.StrokeDescription(path, 0, duration))
-            .build()
-        lastOwnGestureAt = SystemClock.uptimeMillis()
-        dispatchGesture(gesture, null, null)
-    }
-
-    private fun doubleTapCenter() {
-        val x = screenW / 2f + HumanTiming.nextInt(-70, 70)
-        val y = screenH * 0.45f + HumanTiming.nextInt(-90, 90)
-        val gap = HumanTiming.between(110, 170)
-        val p1 = Path().apply { moveTo(x, y) }
-        val p2 = Path().apply { moveTo(x + HumanTiming.nextInt(-6, 6), y + HumanTiming.nextInt(-6, 6)) }
-        val gesture = GestureDescription.Builder()
-            .addStroke(GestureDescription.StrokeDescription(p1, 0, HumanTiming.between(40, 70)))
-            .addStroke(GestureDescription.StrokeDescription(p2, gap, HumanTiming.between(40, 70)))
-            .build()
-        lastOwnGestureAt = SystemClock.uptimeMillis()
-        dispatchGesture(gesture, null, null)
     }
 
     // ================================================================ yardımcılar

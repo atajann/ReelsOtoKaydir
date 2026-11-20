@@ -8,11 +8,13 @@ android {
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.ates.reelsauto"
+        applicationId = "com.ates.reelscout"
         minSdk = 24
         targetSdk = 34
-        versionCode = 2
-        versionName = "2.0"
+        versionCode = 3
+        versionName = "3.0"
+        // Sadece 64-bit ARM (günümüz telefonları) → APK çok daha küçük
+        ndk { abiFilters += listOf("arm64-v8a") }
     }
 
     buildTypes {
@@ -31,10 +33,11 @@ android {
 }
 
 dependencies {
-    // CSV dışa aktarma (FileProvider)
-    implementation("androidx.core:core:1.13.1")
-    // Cihaz içi (internetsiz) yapay zekâ modelleri — APK'nın içine gömülü gelir
-    implementation("com.google.mlkit:language-id:17.0.6")        // dil tespiti
-    implementation("com.google.mlkit:text-recognition:16.0.1")   // ekrandaki yazıyı okuma (OCR)
-    implementation("com.google.mlkit:image-labeling:17.0.9")     // görsel etiketleme
+    implementation("androidx.core:core-ktx:1.13.1")
+    implementation("androidx.appcompat:appcompat:1.7.0")
+    implementation("com.google.android.material:material:1.12.0")
+    // Cihaz içi (internetsiz) yapay zekâ modelleri
+    implementation("com.google.mlkit:language-id:17.0.6")
+    implementation("com.google.mlkit:text-recognition:16.0.1")
+    implementation("com.google.mlkit:image-labeling:17.0.9")
 }

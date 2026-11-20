@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="rs_bg">#0B0B12</color>
+    <color name="rs_surface">#15151F</color>
+    <color name="rs_surface_high">#1D1D2A</color>
+    <color name="rs_outline">#2A2A3A</color>
+    <color name="rs_primary">#8B5CF6</color>
+    <color name="rs_primary_container">#2B1D57</color>
+    <color name="rs_accent">#EC4899</color>
+    <color name="rs_text">#F4F4F8</color>
+    <color name="rs_text_dim">#9A9AB0</color>
+    <color name="rs_success">#22C55E</color>
+    <color name="rs_warning">#F59E0B</color>
+    <color name="rs_danger">#EF4444</color>
+</resources>

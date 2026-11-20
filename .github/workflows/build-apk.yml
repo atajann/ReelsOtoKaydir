@@ -18,7 +18,14 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      # Android SDK, ubuntu-latest sunucusunda hazır kurulu gelir (ANDROID_HOME)
+      # İmza anahtarı GitHub önbelleğinde saklanır (repoda değil):
+      # her derleme aynı anahtarla imzalanır, güncellemeler eskisinin üzerine kurulur
+      - name: İmza anahtarını önbellekten al
+        uses: actions/cache@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: reelscout-signing-key-v1
+
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "8.7"
@@ -27,16 +34,16 @@ jobs:
         run: |
           echo "sdk.dir=$ANDROID_HOME" > local.properties
           gradle --no-daemon assembleDebug
-          cp app/build/outputs/apk/debug/app-debug.apk ReelsOtoKaydir.apk
+          cp app/build/outputs/apk/debug/app-debug.apk ReelScout.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ReelsOtoKaydir-apk
-          path: ReelsOtoKaydir.apk
+          name: ReelScout-apk
+          path: ReelScout.apk
 
       - name: APK'yı Release olarak yayınla
         uses: softprops/action-gh-release@v2
         with:
           tag_name: build-${{ github.run_number }}
-          name: Reels Oto Kaydır (derleme ${{ github.run_number }})
-          files: ReelsOtoKaydir.apk
+          name: ReelScout (derleme ${{ github.run_number }})
+          files: ReelScout.apk

@@ -14,27 +14,33 @@ class Prefs(context: Context) {
     private fun int(k: String, d: Int) = sp.getInt(k, d)
     private fun setInt(k: String, v: Int) = sp.edit().putInt(k, v).apply()
 
-    // --- Ana anahtarlar
+    // Genel
     var enabled: Boolean get() = bool("enabled", true); set(v) = setBool("enabled", v)
     var likeEnabled: Boolean get() = bool("like_enabled", true); set(v) = setBool("like_enabled", v)
 
-    // --- Filtreler
-    /** Sadece İngilizce videolar izlenir, diğerleri hemen geçilir */
+    // Tespit
+    /** 0 = Sıkı, 1 = Dengeli, 2 = Geniş */
+    var sensitivity: Int get() = int("sensitivity", 0); set(v) = setInt("sensitivity", v)
     var englishOnly: Boolean get() = bool("english_only", true); set(v) = setBool("english_only", v)
-    /** Dili tespit edilemeyen (yazısız) videoları da geç */
     var skipUnknown: Boolean get() = bool("skip_unknown", true); set(v) = setBool("skip_unknown", v)
-    /** Sponsorlu/reklam ürün videolarını da beğen */
     var likeAds: Boolean get() = bool("like_ads", false); set(v) = setBool("like_ads", v)
+    var captionExpand: Boolean get() = bool("caption_expand", true); set(v) = setBool("caption_expand", v)
 
-    // --- Doğal davranış
+    // Takip
+    var autoFollow: Boolean get() = bool("auto_follow", true); set(v) = setBool("auto_follow", v)
+    var followVideosNeeded: Int get() = int("follow_needed", 1); set(v) = setInt("follow_needed", v)
+    var dailyFollowCap: Int get() = int("daily_follow_cap", 8); set(v) = setInt("daily_follow_cap", v)
+
+    // İnsan gibi davranış
     var minWatchSec: Int get() = int("min_watch", 3); set(v) = setInt("min_watch", v)
     var maxWatchSec: Int get() = int("max_watch", 25); set(v) = setInt("max_watch", v)
-    /** 0-100: tespit edilen bir ürün videosunun beğenilme olasılığı */
-    var likeChance: Int get() = int("like_chance", 70); set(v) = setInt("like_chance", v)
+    var likeChance: Int get() = int("like_chance", 85); set(v) = setInt("like_chance", v)
+    var rewatchEnabled: Boolean get() = bool("rewatch", true); set(v) = setBool("rewatch", v)
+    var breaksEnabled: Boolean get() = bool("breaks", true); set(v) = setBool("breaks", v)
+
+    // Limitler
     var dailyLikeCap: Int get() = int("daily_cap", 80); set(v) = setInt("daily_cap", v)
     var hourlyLikeCap: Int get() = int("hourly_cap", 20); set(v) = setInt("hourly_cap", v)
-    /** Rastgele aralıklarla mola ver (12–35 dk kullanım, 3–12 dk mola) */
-    var breaksEnabled: Boolean get() = bool("breaks", true); set(v) = setBool("breaks", v)
 
     var logEnabled: Boolean get() = bool("log_enabled", true); set(v) = setBool("log_enabled", v)
 
@@ -42,7 +48,7 @@ class Prefs(context: Context) {
         get() = sp.getString("last_product", "") ?: ""
         set(v) = sp.edit().putString("last_product", v).apply()
 
-    // --- Günlük sayaçlar
+    // Günlük sayaçlar
     private fun today(): String = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
 
     private fun counter(key: String): Int =
@@ -50,11 +56,10 @@ class Prefs(context: Context) {
 
     private fun inc(key: String) {
         if (sp.getString("day", "") != today()) {
-            // Yeni gün: ayarlara dokunmadan sadece sayaçları sıfırla
             sp.edit()
                 .putString("day", today())
-                .putInt("c_like", 0).putInt("c_scroll", 0)
-                .putInt("c_product", 0).putInt("c_lang_skip", 0)
+                .putInt("c_like", 0).putInt("c_scroll", 0).putInt("c_product", 0)
+                .putInt("c_lang_skip", 0).putInt("c_follow", 0).putInt("c_rewatch", 0)
                 .apply()
         }
         sp.edit().putInt(key, sp.getInt(key, 0) + 1).apply()
@@ -64,9 +69,13 @@ class Prefs(context: Context) {
     val scrollsToday get() = counter("c_scroll")
     val productsToday get() = counter("c_product")
     val langSkipsToday get() = counter("c_lang_skip")
+    val followsToday get() = counter("c_follow")
+    val rewatchesToday get() = counter("c_rewatch")
 
     fun addLike() = inc("c_like")
     fun addScroll() = inc("c_scroll")
     fun addProduct() = inc("c_product")
     fun addLangSkip() = inc("c_lang_skip")
+    fun addFollow() = inc("c_follow")
+    fun addRewatch() = inc("c_rewatch")
 }

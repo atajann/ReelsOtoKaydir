@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Reels Oto Kaydır</string>
-    <string name="service_label">Reels Oto Kaydır Servisi</string>
-    <string name="service_description">Instagram Reels sekmesindeyken videoları otomatik kaydırır, yalnızca İngilizce ürün videolarını inceleyip beğenir. Ekranı yalnızca Instagram açıkken okur; analizler cihazın içinde yapılır ve sadece telefondaki bir CSV dosyasına kaydedilir, hiçbir yere gönderilmez. Duraklatmak için Reels açıkken Ses Kısma tuşuna bas.</string>
+    <string name="app_name">ReelScout</string>
+    <string name="service_label">ReelScout</string>
+    <string name="service_description">ReelScout, Instagram Reels sekmesinde videoları doğal bir tempoyla kaydırır; yalnızca İngilizce ürün videolarını tespit edip beğenir ve isteğe bağlı olarak ürün paylaşan hesapları takip eder. Ekranı yalnızca Instagram açıkken okur; tüm analizler cihazın içinde yapılır ve hiçbir yere gönderilmez. Reels açıkken Ses Kısma tuşu duraklatır.</string>
 </resources>
