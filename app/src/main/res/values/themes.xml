@@ -20,6 +20,9 @@
         <item name="android:windowLightStatusBar">false</item>
     </style>
 
+    <!-- Noktalı stil adları (RS.Card vb.) için temel stil -->
+    <style name="RS" />
+
     <style name="RS.Card" parent="Widget.Material3.CardView.Filled">
         <item name="cardBackgroundColor">@color/rs_surface</item>
         <item name="cardCornerRadius">20dp</item>
