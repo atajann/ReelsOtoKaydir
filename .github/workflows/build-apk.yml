@@ -4,6 +4,9 @@ on:
   push:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -24,8 +27,16 @@ jobs:
         run: |
           echo "sdk.dir=$ANDROID_HOME" > local.properties
           gradle --no-daemon assembleDebug
+          cp app/build/outputs/apk/debug/app-debug.apk ReelsOtoKaydir.apk
 
       - uses: actions/upload-artifact@v4
         with:
           name: ReelsOtoKaydir-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
+          path: ReelsOtoKaydir.apk
+
+      - name: APK'yı Release olarak yayınla
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: Reels Oto Kaydır (derleme ${{ github.run_number }})
+          files: ReelsOtoKaydir.apk
