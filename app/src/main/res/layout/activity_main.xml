@@ -1,0 +1,221 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="20dp">
+
+        <TextView
+            android:id="@+id/txtStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="14dp"
+            android:textSize="15sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/txtLast"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:background="#FFF3E0"
+            android:padding="12dp"
+            android:textSize="13sp" />
+
+        <Button
+            android:id="@+id/btnAccessibility"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:text="1) Erişilebilirlik iznini ver" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:text="Genel"
+            android:textColor="#E1306C"
+            android:textSize="17sp"
+            android:textStyle="bold" />
+
+        <Switch
+            android:id="@+id/swEnabled"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:text="Otomatik kaydırma"
+            android:textSize="15sp" />
+
+        <Switch
+            android:id="@+id/swLike"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:text="Ürün videolarını otomatik beğen"
+            android:textSize="15sp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:text="Filtreler"
+            android:textColor="#E1306C"
+            android:textSize="17sp"
+            android:textStyle="bold" />
+
+        <Switch
+            android:id="@+id/swEnglish"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:text="Sadece İngilizce videolar (diğerlerini hemen geç)"
+            android:textSize="15sp" />
+
+        <Switch
+            android:id="@+id/swSkipUnknown"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:text="Dili anlaşılmayan (yazısız) videoları da geç"
+            android:textSize="15sp" />
+
+        <Switch
+            android:id="@+id/swLikeAds"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:text="Sponsorlu ürün videolarını da beğen"
+            android:textSize="15sp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:text="Doğal davranış"
+            android:textColor="#E1306C"
+            android:textSize="17sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:text="İzleme süresi aralığı (saniye) – süre bu aralıkta tamamen rastgele seçilir"
+            android:textStyle="bold" />
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+        <EditText
+            android:id="@+id/edtMin"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:hint="En az"
+            android:inputType="number" />
+        <EditText
+            android:id="@+id/edtMax"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:hint="En çok"
+            android:inputType="number" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/txtLikeChance"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:textStyle="bold" />
+
+        <SeekBar
+            android:id="@+id/seekLikeChance"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:max="100" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:text="Beğeni limitleri: günlük / saatlik"
+            android:textStyle="bold" />
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+        <EditText
+            android:id="@+id/edtDailyCap"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:hint="Günlük"
+            android:inputType="number" />
+        <EditText
+            android:id="@+id/edtHourlyCap"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:hint="Saatlik"
+            android:inputType="number" />
+        </LinearLayout>
+
+        <Switch
+            android:id="@+id/swBreaks"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:text="Rastgele molalar ver (12–35 dk kullanım, 3–12 dk mola)"
+            android:textSize="15sp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:text="Analiz kaydı"
+            android:textColor="#E1306C"
+            android:textSize="17sp"
+            android:textStyle="bold" />
+
+        <Switch
+            android:id="@+id/swLog"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:text="Her Reels analizini CSV dosyasına kaydet"
+            android:textSize="15sp" />
+
+        <Button
+            android:id="@+id/btnExport"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:text="Analiz dosyasını paylaş / dışa aktar (CSV)" />
+
+        <Button
+            android:id="@+id/btnSave"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="22dp"
+            android:text="Ayarları kaydet" />
+
+        <Button
+            android:id="@+id/btnOpenInstagram"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="2) Instagram\'ı aç → Reels sekmesine geç" />
+
+        <TextView
+            android:id="@+id/txtInfo"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:textColor="#666666" />
+    </LinearLayout>
+</ScrollView>
