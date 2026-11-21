@@ -5,9 +5,9 @@ import android.view.accessibility.AccessibilityNodeInfo
 import java.util.ArrayDeque
 
 /** Ekrandaki görünür metin düğümleri */
-internal data class TextNode(val text: String, val rect: Rect, val node: AccessibilityNodeInfo)
+data class TextNode(val text: String, val rect: Rect, val node: AccessibilityNodeInfo)
 
-internal fun visibleTexts(root: AccessibilityNodeInfo, w: Int, h: Int, max: Int = 3000): List<TextNode> {
+fun visibleTexts(root: AccessibilityNodeInfo, w: Int, h: Int, max: Int = 3000): List<TextNode> {
     val screen = Rect(0, 0, w, h)
     val out = mutableListOf<TextNode>()
     val q = ArrayDeque<AccessibilityNodeInfo>()
