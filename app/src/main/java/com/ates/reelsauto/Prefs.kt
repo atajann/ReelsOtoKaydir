@@ -30,6 +30,10 @@ class Prefs(context: Context) {
     var autoFollow: Boolean get() = bool("auto_follow", true); set(v) = setBool("auto_follow", v)
     var followVideosNeeded: Int get() = int("follow_needed", 1); set(v) = setInt("follow_needed", v)
     var dailyFollowCap: Int get() = int("daily_follow_cap", 8); set(v) = setInt("daily_follow_cap", v)
+    /** Takipten önce hesabın profilini açıp incele, sonra Reels'e geri dön */
+    var profileCheck: Boolean get() = bool("profile_check", true); set(v) = setBool("profile_check", v)
+    /** Emin olunamayan ürün videolarında yorumlara göz atıp doğrula */
+    var commentPeek: Boolean get() = bool("comment_peek", true); set(v) = setBool("comment_peek", v)
 
     // İnsan gibi davranış
     var minWatchSec: Int get() = int("min_watch", 3); set(v) = setInt("min_watch", v)
@@ -60,6 +64,7 @@ class Prefs(context: Context) {
                 .putString("day", today())
                 .putInt("c_like", 0).putInt("c_scroll", 0).putInt("c_product", 0)
                 .putInt("c_lang_skip", 0).putInt("c_follow", 0).putInt("c_rewatch", 0)
+                .putInt("c_profile", 0).putInt("c_comments", 0)
                 .apply()
         }
         sp.edit().putInt(key, sp.getInt(key, 0) + 1).apply()
@@ -71,6 +76,8 @@ class Prefs(context: Context) {
     val langSkipsToday get() = counter("c_lang_skip")
     val followsToday get() = counter("c_follow")
     val rewatchesToday get() = counter("c_rewatch")
+    val profileVisitsToday get() = counter("c_profile")
+    val commentPeeksToday get() = counter("c_comments")
 
     fun addLike() = inc("c_like")
     fun addScroll() = inc("c_scroll")
@@ -78,4 +85,6 @@ class Prefs(context: Context) {
     fun addLangSkip() = inc("c_lang_skip")
     fun addFollow() = inc("c_follow")
     fun addRewatch() = inc("c_rewatch")
+    fun addProfileVisit() = inc("c_profile")
+    fun addCommentPeek() = inc("c_comments")
 }

@@ -332,6 +332,12 @@
                 android:layout_height="wrap_content"
                 android:text="Açıklamanın devamını aç ve oku" />
             <com.google.android.material.materialswitch.MaterialSwitch
+                android:id="@+id/swCommentPeek"
+                style="@style/RS.Switch"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Emin olunamayanlarda yorumlara göz at" />
+            <com.google.android.material.materialswitch.MaterialSwitch
                 android:id="@+id/swLikeAds"
                 style="@style/RS.Switch"
                 android:layout_width="match_parent"
@@ -362,6 +368,18 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="Ürün hesaplarını takip et" />
+            <com.google.android.material.materialswitch.MaterialSwitch
+                android:id="@+id/swProfileCheck"
+                style="@style/RS.Switch"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Takipten önce profili incele" />
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Kullanıcı adına dokunup bio, link ve takip sayısına bakar; referans hesaplara benziyorsa takip eder ve Reels\'e geri döner."
+                android:textColor="@color/rs_text_dim"
+                android:textSize="12sp" />
             <TextView
                 
                 style="@style/RS.Label"

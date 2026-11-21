@@ -23,13 +23,16 @@ import java.util.ArrayDeque
 
 /**
  * ReelScout akışı (her Reels için):
- *  SETTLING  → göz ekrana otursun (rastgele)
- *  EXPANDING → açıklamanın "devamı"na dokun, tam metni oku (isteğe bağlı)
- *  ANALYZING → metin + ekran görüntüsü (OCR, görsel etiket) + dil tespiti
- *      İngilizce değil → SKIPPING (kısa tepki süresiyle geç)
- *      İngilizce       → ürün puanı → WATCHING
- *  WATCHING  → rastgele süre izle, ek karelerle derin analiz, ürünse beğen, kesin ürün hesabıysa takip et
- *  sonunda   → kaydet → (ara sıra) geri dön ve önceki videoyu tekrar izle (REWATCH) → kaydır
+ *  SETTLING  → göz ekrana otursun
+ *  EXPANDING → açıklamanın devamını aç, oku, sonra KAPAT
+ *  ANALYZING → metin + ekran görüntüsü (OCR, etiket) + dil
+ *  WATCHING  → izle; emin değilse yorumlara göz at; ürünse beğen;
+ *              takip adayıysa profili aç → incele → takip et → Reels'e geri dön
+ *  sonunda   → kaydet → (ara sıra) önceki videoyu tekrar izle → kaydır
+ *
+ * "Gezinti" (excursion): Reels dışına kısa çıkışlar (yorum paneli, profil, açıklama paneli).
+ * Dönüş: sistem GERİ komutu (tuşlu ve hareketli gezinmede çalışır) → Instagram geri oku →
+ * kenardan kaydırma → Reels sekmesi. Hiçbiri olmazsa güvenli şekilde duraklar.
  */
 class ReelsAccessibilityService : AccessibilityService() {
 
@@ -39,24 +42,28 @@ class ReelsAccessibilityService : AccessibilityService() {
         private const val TICK_MS = 400L
         private const val DETECT_INTERVAL_MS = 700L
         private const val ANALYZE_TIMEOUT_MS = 7000L
+        private const val EXCURSION_TIMEOUT_MS = 25_000L
         private const val MAX_NODES = 2500
 
         private val REELS_ID_HINTS = listOf("clips_viewer", "clips_video_container", "clips_media_component")
         private val LIKE_WORDS = setOf("like", "beğen")
         private val UNLIKE_WORDS = setOf("unlike", "liked", "beğenildi", "beğenmekten vazgeç")
+        private val BACK_WORDS = setOf("back", "geri", "navigate up", "yukarı git", "geri git")
     }
 
     private enum class Phase { SETTLING, EXPANDING, ANALYZING, WATCHING, SKIPPING, REWATCH }
-    /** NORMAL: yeni video, BACK: tekrar izlemek için geri dönüldü, RETURN: tekrar izlemeden sonra ileri dönüldü */
     private enum class Kind { NORMAL, BACK, RETURN }
+    private enum class Exc { NONE, CAPTION, COMMENTS, PROFILE }
 
     private class ReelState {
         var screen: ReelScreen? = null
         var lang = "?"
         val ocr = LinkedHashSet<String>()
         val labels = LinkedHashSet<String>()
+        val extras = mutableListOf<ExtraSignal>()
         var verdict: ProductVerdict? = null
         val frameTimes = mutableListOf<Long>()
+        var profileNote = ""
     }
 
     private lateinit var prefs: Prefs
@@ -88,19 +95,33 @@ class ReelsAccessibilityService : AccessibilityService() {
     private var followAtMs = -1L
     private var followDecided = false
     private var followed = false
+    private var commentAtMs = -1L
+    private var commentDecided = false
     private var frameBusy = false
 
-    // Bir önceki videonun sonucu (tekrar izleme kararı için)
+    // Gezinti durumu
+    private var exc = Exc.NONE
+    private var excStage = 0          // 0: içerik bekleniyor/inceleniyor, 1: işlem sonrası bekleme, 2: geri dönülüyor, 3: açıklama kapatma kontrolü
+    private var excStart = 0L
+    private var excAt = 0L
+    private var returnTries = 0
+    private var reelsTabUsed = false
+    private var expandedTarget: AccessibilityNodeInfo? = null
+    private var captionLenBefore = 0
+    private var captionLenExpanded = 0
+    private val checkedProfiles = HashSet<String>()
+
     private var prevWorthy = false
     private var prevWatched = false
 
-    // Mola / dikkat dağınıklığı
     private var holdUntil = 0L
     private var swipeAfterHold = false
     private var sessionEndsAt = 0L
 
     private val likeTimes = ArrayDeque<Long>()
     private val followTimes = ArrayDeque<Long>()
+    private val profileTimes = ArrayDeque<Long>()
+    private val commentTimes = ArrayDeque<Long>()
 
     private var screenW = 1080
     private var screenH = 1920
@@ -133,14 +154,14 @@ class ReelsAccessibilityService : AccessibilityService() {
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         event ?: return
         if (event.packageName?.toString() != IG_PACKAGE) {
-            if (onReels) leaveReels()
+            if (onReels && exc == Exc.NONE) leaveReels()
             return
         }
+        if (exc != Exc.NONE) return   // gezinti sırasında Reels algılaması askıda
         val now = SystemClock.uptimeMillis()
 
-        // Kullanıcı kendi eliyle kaydırdıysa yeni video say
         if (event.eventType == AccessibilityEvent.TYPE_VIEW_SCROLLED && onReels && !gestureBusy &&
-            now - gestures.lastGestureAt > 1500 && now - reelStart > 1000
+            phase != Phase.EXPANDING && now - gestures.lastGestureAt > 1500 && now - reelStart > 1000
         ) {
             val cls = event.className?.toString() ?: ""
             if (cls.contains("ViewPager") || cls.contains("RecyclerView")) startNewReel(Kind.NORMAL)
@@ -152,13 +173,12 @@ class ReelsAccessibilityService : AccessibilityService() {
         }
     }
 
-    /** Ses kısma tuşu: Reels açıkken duraklat / devam et */
     override fun onKeyEvent(event: KeyEvent?): Boolean {
         if (event == null || !onReels) return false
         if (event.keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) {
             if (event.action == KeyEvent.ACTION_DOWN) {
                 paused = !paused
-                if (!paused) startNewReel(Kind.NORMAL)
+                if (!paused) { exc = Exc.NONE; startNewReel(Kind.NORMAL) }
                 toast(if (paused) "⏸ ReelScout duraklatıldı" else "▶ ReelScout devam ediyor")
             }
             return true
@@ -169,6 +189,7 @@ class ReelsAccessibilityService : AccessibilityService() {
     // ================================================================ Reels ekranı
 
     private fun updateReelsState() {
+        if (exc != Exc.NONE) return
         val root = rootInActiveWindow
         val isReels = root != null && root.packageName?.toString() == IG_PACKAGE && isReelsScreen(root)
         if (isReels && !onReels) enterReels()
@@ -185,6 +206,7 @@ class ReelsAccessibilityService : AccessibilityService() {
     private fun leaveReels() {
         onReels = false
         gestureBusy = false
+        exc = Exc.NONE
         stopTicking()
     }
 
@@ -232,14 +254,15 @@ class ReelsAccessibilityService : AccessibilityService() {
         watchMs = Long.MAX_VALUE
         likeAtMs = -1L; likeDecided = false; liked = false
         followAtMs = -1L; followDecided = false; followed = false
+        commentAtMs = -1L; commentDecided = false
         frameBusy = false
+        expandedTarget = null
     }
 
     private fun step() {
         if (!prefs.enabled || paused || !onReels) return
         val now = SystemClock.uptimeMillis()
 
-        // Hareket sürerken bekle (takılırsa 4 sn sonra kurtar)
         if (gestureBusy) {
             if (now - gestures.lastGestureAt > 4000) { gestureBusy = false; startNewReel(Kind.NORMAL) }
             return
@@ -249,11 +272,15 @@ class ReelsAccessibilityService : AccessibilityService() {
         if (!pm.isInteractive) return
 
         val root = rootInActiveWindow
-        if (root == null || root.packageName?.toString() != IG_PACKAGE) { leaveReels(); return }
+        if (root == null || root.packageName?.toString() != IG_PACKAGE) {
+            if (exc == Exc.NONE) leaveReels()
+            return
+        }
+
+        if (exc != Exc.NONE) { stepExcursion(root, now); return }
 
         HumanTiming.updateMood(now)
 
-        // Mola / dikkat dağınıklığı
         if (holdUntil > now) return
         if (swipeAfterHold) { swipeAfterHold = false; moveNext(); return }
         if (prefs.breaksEnabled && sessionEndsAt == 0L) sessionEndsAt = now + HumanTiming.sessionMs()
@@ -265,7 +292,8 @@ class ReelsAccessibilityService : AccessibilityService() {
             Phase.EXPANDING -> if (now >= expandUntil) {
                 val again = ReelScreenReader.read(root, screenW, screenH)
                 cur.screen = merge(cur.screen, again)
-                startAnalysis()
+                captionLenExpanded = again.caption.length
+                beginCaptionCollapse(now)
             }
 
             Phase.ANALYZING -> if (now - analyzeStartedAt > ANALYZE_TIMEOUT_MS) decide("und")
@@ -282,13 +310,19 @@ class ReelsAccessibilityService : AccessibilityService() {
                     val id = reelId
                     captureAndAnalyze(id) { onExtraFrame(id) }
                 }
+                if (commentAtMs >= 0 && el >= commentAtMs) {
+                    commentAtMs = -1
+                    if (startCommentPeek(root, now)) return
+                }
                 if (likeAtMs >= 0 && !liked && el >= likeAtMs) {
                     likeAtMs = -1
                     if (canLike() && tryLike(root)) { liked = true; registerLike() }
                 }
                 if (followAtMs >= 0 && !followed && el >= followAtMs) {
                     followAtMs = -1
-                    if (canFollow() && tryFollow(root)) registerFollow()
+                    if (prefs.profileCheck) {
+                        if (startProfileVisit(root, now)) return
+                    } else if (canFollow() && tryFollowOnReel(root)) registerFollow()
                 }
                 if (el >= watchMs) finishReel("izlendi")
             }
@@ -297,7 +331,6 @@ class ReelsAccessibilityService : AccessibilityService() {
 
     private fun onSettled(root: AccessibilityNodeInfo, now: Long) {
         if (kind != Kind.NORMAL) {
-            // Tekrar izleme: geri dönülen videoyu birkaç saniye izle, ileri dönüşte kısa bak
             phase = Phase.REWATCH
             val el = now - reelStart
             watchMs = el + if (kind == Kind.BACK) HumanTiming.between(3_000, 12_000) else HumanTiming.between(700, 2_600)
@@ -310,6 +343,8 @@ class ReelsAccessibilityService : AccessibilityService() {
             val target = clickableAncestor(more) ?: more
             gestures.markOwnAction()
             if (target.performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
+                expandedTarget = target
+                captionLenBefore = s.caption.length
                 phase = Phase.EXPANDING
                 expandUntil = now + HumanTiming.between(900, 1_700)
                 return
@@ -330,8 +365,179 @@ class ReelsAccessibilityService : AccessibilityService() {
             shopButton = a.shopButton || b.shopButton,
             moreButton = null,
             followButton = b.followButton ?: a.followButton,
-            following = a.following || b.following
+            following = a.following || b.following,
+            userNode = b.userNode ?: a.userNode,
+            commentButton = b.commentButton ?: a.commentButton
         )
+    }
+
+    // ================================================================ gezintiler
+
+    /** Açıklama okunduktan sonra kapat: önce tekrar dokun, hâlâ açıksa GERİ */
+    private fun beginCaptionCollapse(now: Long) {
+        val t = expandedTarget
+        if (captionLenExpanded <= captionLenBefore + 5 || t == null) { startAnalysis(); return }
+        gestures.markOwnAction()
+        try { t.refresh(); t.performAction(AccessibilityNodeInfo.ACTION_CLICK) } catch (e: Exception) { }
+        exc = Exc.CAPTION
+        excStage = 3
+        excStart = now
+        excAt = now + HumanTiming.between(600, 1_000)
+    }
+
+    private fun startCommentPeek(root: AccessibilityNodeInfo, now: Long): Boolean {
+        val btn = ReelScreenReader.read(root, screenW, screenH).commentButton ?: cur.screen?.commentButton ?: return false
+        val target = clickableAncestor(btn) ?: btn
+        gestures.markOwnAction()
+        if (!target.performAction(AccessibilityNodeInfo.ACTION_CLICK)) return false
+        commentTimes.addLast(System.currentTimeMillis())
+        prefs.addCommentPeek()
+        exc = Exc.COMMENTS
+        excStage = 0
+        excStart = now
+        excAt = now + HumanTiming.between(1_800, 3_200)
+        return true
+    }
+
+    private fun startProfileVisit(root: AccessibilityNodeInfo, now: Long): Boolean {
+        val s = ReelScreenReader.read(root, screenW, screenH)
+        val expected = cur.screen?.user ?: return false
+        if (s.user.isNotEmpty() && !s.user.equals(expected, ignoreCase = true)) return false
+        val node = s.userNode ?: cur.screen?.userNode ?: return false
+        val target = clickableAncestor(node) ?: node
+        gestures.markOwnAction()
+        if (!target.performAction(AccessibilityNodeInfo.ACTION_CLICK)) return false
+        checkedProfiles += expected.lowercase()
+        profileTimes.addLast(System.currentTimeMillis())
+        prefs.addProfileVisit()
+        exc = Exc.PROFILE
+        excStage = 0
+        excStart = now
+        excAt = now + HumanTiming.between(1_500, 2_500)
+        return true
+    }
+
+    private fun stepExcursion(root: AccessibilityNodeInfo, now: Long) {
+        if (now - excStart > EXCURSION_TIMEOUT_MS) { giveUp(); return }
+        if (now < excAt) return
+        when (excStage) {
+            0 -> when (exc) {
+                Exc.COMMENTS -> {
+                    val texts = visibleTexts(root, screenW, screenH)
+                    if (!CommentAnalyzer.isCommentSheet(texts) && now - excStart < 5_000) { excAt = now + 500; return }
+                    val r = CommentAnalyzer.analyze(root, screenW, screenH, cur.verdict?.ctaKeyword ?: cur.screen?.let { ProductDetector.extractCta(it.caption) })
+                    cur.extras.addAll(CommentAnalyzer.toSignals(r))
+                    Log.i(TAG, "Yorumlar: anahtar=" + r.keywordHits + " (" + r.topWord + "), satın alma soruları=" + r.buyQuestions + "/" + r.total)
+                    excStage = 1
+                    excAt = now + HumanTiming.between(600, 1_800)   // biraz daha "okuyormuş" gibi
+                }
+                Exc.PROFILE -> {
+                    val user = cur.screen?.user ?: ""
+                    val r = ProfileAnalyzer.analyze(root, screenW, screenH, user)
+                    if (!r.isProfile) {
+                        if (now - excStart > 6_000) beginReturn(now) else excAt = now + 600
+                        return
+                    }
+                    val v = cur.verdict
+                    val needed = if (v?.confidence == Confidence.CERTAIN) 5 else 7
+                    cur.profileNote = "profil:" + r.score + " " + r.reasons.joinToString("+")
+                    Log.i(TAG, "Profil @" + user + ": puan " + r.score + " " + r.reasons)
+                    if (r.score >= needed && !r.following && r.followButton != null && canFollow()) {
+                        val btn = clickableAncestor(r.followButton) ?: r.followButton
+                        gestures.markOwnAction()
+                        if (btn.performAction(AccessibilityNodeInfo.ACTION_CLICK)) registerFollow()
+                    }
+                    excStage = 1
+                    excAt = now + HumanTiming.between(900, 2_200)
+                }
+                else -> beginReturn(now)
+            }
+            1 -> beginReturn(now)
+            3 -> {
+                // Açıklama kapandı mı?
+                val again = ReelScreenReader.read(root, screenW, screenH)
+                val stillOpen = isReelsScreen(root) && again.caption.length >= captionLenExpanded - 3
+                if (stillOpen || !isReelsScreen(root)) beginReturn(now) else endExcursion(now)
+            }
+            2 -> {
+                if (returnedToReels(root)) { endExcursion(now); return }
+                returnTries++
+                when (returnTries) {
+                    1 -> clickBackArrow(root)
+                    2 -> gestures.edgeBack()
+                    3 -> clickReelsTab(root)
+                    4 -> performGlobalAction(GLOBAL_ACTION_BACK)
+                    else -> { giveUp(); return }
+                }
+                excAt = now + 1_400
+            }
+        }
+    }
+
+    private fun beginReturn(now: Long) {
+        excStage = 2
+        returnTries = 0
+        gestures.markOwnAction()
+        performGlobalAction(GLOBAL_ACTION_BACK)   // tuşlu ve hareketli gezinmede aynı şekilde çalışır
+        excAt = now + 1_300
+    }
+
+    private fun returnedToReels(root: AccessibilityNodeInfo): Boolean {
+        if (!isReelsScreen(root)) return false
+        val texts = visibleTexts(root, screenW, screenH)
+        return !CommentAnalyzer.isCommentSheet(texts) && !ProfileAnalyzer.isProfileScreen(texts)
+    }
+
+    private fun clickBackArrow(root: AccessibilityNodeInfo) {
+        val arrow = visibleTexts(root, screenW, screenH)
+            .firstOrNull { it.rect.centerY() < screenH * 0.15 && it.text.trim().lowercase() in BACK_WORDS }
+        val target = arrow?.let { clickableAncestor(it.node) ?: it.node }
+        gestures.markOwnAction()
+        if (target == null || !target.performAction(AccessibilityNodeInfo.ACTION_CLICK)) performGlobalAction(GLOBAL_ACTION_BACK)
+    }
+
+    private fun clickReelsTab(root: AccessibilityNodeInfo) {
+        var tab: AccessibilityNodeInfo? = null
+        walk(root) { n ->
+            val id = n.viewIdResourceName ?: ""
+            val r = Rect(); n.getBoundsInScreen(r)
+            if (r.centerY() > screenH * 0.85 && (id.contains("clips_tab") || n.contentDescription?.toString().equals("Reels", true))) tab = n
+            tab != null
+        }
+        val t = tab ?: return
+        reelsTabUsed = true
+        gestures.markOwnAction()
+        (clickableAncestor(t) ?: t).performAction(AccessibilityNodeInfo.ACTION_CLICK)
+    }
+
+    private fun endExcursion(now: Long) {
+        val type = exc
+        exc = Exc.NONE
+        excStage = 0
+        if (reelsTabUsed) { reelsTabUsed = false; startNewReel(Kind.NORMAL); return }
+        when (type) {
+            Exc.CAPTION -> startAnalysis()
+            Exc.COMMENTS -> {
+                val was = cur.verdict?.likeWorthy == true
+                val v = evaluateProduct()
+                if (v.likeWorthy && !was) planLike()
+                planFollow()
+                continueWatching(now)
+            }
+            else -> continueWatching(now)
+        }
+    }
+
+    private fun continueWatching(now: Long) {
+        val el = now - reelStart
+        watchMs = maxOf(watchMs, el + HumanTiming.between(1_200, 4_000))
+    }
+
+    private fun giveUp() {
+        exc = Exc.NONE
+        excStage = 0
+        paused = true
+        toast("ReelScout Reels'e geri dönemedi ve duraklatıldı. Reels'e dönüp Ses Kısma ile devam ettir.")
     }
 
     // ================================================================ analiz
@@ -376,6 +582,7 @@ class ReelsAccessibilityService : AccessibilityService() {
             cur.frameTimes.sort()
         }
         if (v.likeWorthy) planLike()
+        planCommentPeek()
         planFollow()
         phase = Phase.WATCHING
         Log.i(TAG, "Dil: $lang | ürün: " + v.confidence.label + " (" + v.score + ") " + v.signals + " | mod: " + HumanTiming.mood.label)
@@ -385,8 +592,9 @@ class ReelsAccessibilityService : AccessibilityService() {
         val s = cur.screen
         val text = listOfNotNull(s?.caption, s?.allText).joinToString(" ") + " " + cur.ocr.joinToString(" ")
         val user = s?.user ?: ""
-        val history = if (user.isNotBlank()) accounts.get(user).products else 0
-        val v = ProductDetector.evaluate(text, s?.shopButton == true, cur.labels, history, prefs.sensitivity)
+        val history = if (user.isBlank()) 0
+            else accounts.get(user).products + (if (user.lowercase() in ProfileAnalyzer.SEEDS) 2 else 0)
+        val v = ProductDetector.evaluate(text, s?.shopButton == true, cur.labels, history, prefs.sensitivity, cur.extras)
         cur.verdict = v
         return v
     }
@@ -397,9 +605,10 @@ class ReelsAccessibilityService : AccessibilityService() {
         val v = evaluateProduct()
         if (v.likeWorthy && !was) {
             val el = SystemClock.uptimeMillis() - reelStart
-            watchMs = maxOf(watchMs, el + HumanTiming.between(4_000, 10_000))   // ürün olduğu sonradan anlaşıldı
+            watchMs = maxOf(watchMs, el + HumanTiming.between(4_000, 10_000))
             planLike()
         }
+        planCommentPeek()
         planFollow()
     }
 
@@ -414,21 +623,48 @@ class ReelsAccessibilityService : AccessibilityService() {
         likeAtMs = maxOf(at, el + 1500)
     }
 
-    /** Sadece KESİN ürün videosu paylaşan hesaplar takip edilir */
+    /** Emin olunamayan (olası / büyük ihtimal) videolarda yorumlara göz at */
+    private fun planCommentPeek() {
+        if (commentDecided || !prefs.commentPeek) return
+        val v = cur.verdict ?: return
+        if (v.confidence == Confidence.CERTAIN || v.confidence == Confidence.NONE) return
+        if (v.strong == 0 && v.ctaKeyword == null) return
+        if (cur.screen?.commentButton == null) return
+        prune(commentTimes)
+        if (commentTimes.size >= 6) return
+        commentDecided = true
+        if (!HumanTiming.chance(0.75)) return
+        val el = SystemClock.uptimeMillis() - reelStart
+        val span = maxOf(2_500L, (watchMs - el) / 2)
+        commentAtMs = el + HumanTiming.between(2_000, span)
+        watchMs = maxOf(watchMs, commentAtMs + 6_000)
+    }
+
+    /** Takip adayı: kesin ürün (ya da profil kontrolü açıksa büyük ihtimal + profil onayı) */
     private fun planFollow() {
         if (followDecided || !prefs.autoFollow) return
         val v = cur.verdict ?: return
-        if (v.confidence != Confidence.CERTAIN) return
         val s = cur.screen ?: return
         if (s.user.isBlank() || s.following) return
+        val key = s.user.lowercase()
         val info = accounts.get(s.user)
         if (info.followed) return
-        if (info.certain + 1 < prefs.followVideosNeeded) return
+        if (prefs.profileCheck) {
+            if (v.confidence < Confidence.LIKELY) return
+            if (key in checkedProfiles) return
+            if (info.products + 1 < prefs.followVideosNeeded && key !in ProfileAnalyzer.SEEDS) return
+            prune(profileTimes)
+            if (profileTimes.size >= 4) return
+            if (s.userNode == null) return
+        } else {
+            if (v.confidence != Confidence.CERTAIN) return
+            if (info.certain + 1 < prefs.followVideosNeeded) return
+        }
         if (!canFollow()) return
         followDecided = true
         val el = SystemClock.uptimeMillis() - reelStart
         val at = el + ((watchMs - el) * HumanTiming.followFraction()).toLong()
-        followAtMs = maxOf(at, el + 2_000, if (likeAtMs >= 0) likeAtMs + 1_500 else 0L)
+        followAtMs = maxOf(at, el + 2_000, if (likeAtMs >= 0) likeAtMs + 1_500 else 0L, if (commentAtMs >= 0) commentAtMs + 5_000 else 0L)
         if (followAtMs >= watchMs) watchMs = followAtMs + HumanTiming.between(1_500, 4_000)
     }
 
@@ -481,11 +717,12 @@ class ReelsAccessibilityService : AccessibilityService() {
             }
         }
         if (prefs.logEnabled) {
+            val signals = (v?.signals ?: emptyList()) + (if (cur.profileNote.isNotEmpty()) listOf(cur.profileNote) else emptyList())
             logger.log(
                 ReelRecord(
                     result = result, lang = cur.lang, isProduct = worthy,
                     confidence = v?.confidence?.label ?: "-", score = v?.score ?: 0,
-                    signals = v?.signals ?: emptyList(), cta = v?.ctaKeyword,
+                    signals = signals, cta = v?.ctaKeyword,
                     liked = liked, followed = followed, sponsored = s?.sponsored == true,
                     user = user, audio = s?.audio ?: "", metrics = s?.metrics ?: emptyList(),
                     caption = s?.caption ?: "", ocr = cur.ocr.toList(), labels = cur.labels.toList(),
@@ -501,7 +738,6 @@ class ReelsAccessibilityService : AccessibilityService() {
         prevWorthy = worthy
         prevWatched = result == "izlendi"
 
-        // Mola zamanı
         if (prefs.breaksEnabled && sessionEndsAt in 1L until now) {
             val b = HumanTiming.breakMs()
             holdUntil = now + b
@@ -511,14 +747,12 @@ class ReelsAccessibilityService : AccessibilityService() {
             toast("☕ " + (b / 60000) + " dk mola, sonra kendiliğinden devam eder")
             return
         }
-        // Ara sıra geri dönüp bir önceki videoyu tekrar izle (ürünse daha olası)
         if (prefs.rewatchEnabled && wasPrevWatched && HumanTiming.chance(if (wasPrevWorthy) 0.15 else 0.03)) {
             prefs.addRewatch()
             prevWatched = false
             swipe(up = false, nextKind = Kind.BACK)
             return
         }
-        // Kısa dikkat dağınıklığı (telefondan başını kaldırma)
         if (HumanTiming.chance(0.025)) {
             holdUntil = now + HumanTiming.distractionMs()
             swipeAfterHold = true
@@ -566,7 +800,6 @@ class ReelsAccessibilityService : AccessibilityService() {
         }
         if (alreadyLiked) return false
 
-        // İnsanlar bazen kalbe dokunur, bazen çift dokunur
         val target = likeNode?.let { clickableAncestor(it) }
         gestures.markOwnAction()
         if (target != null && HumanTiming.chance(0.65) && target.performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
@@ -578,7 +811,7 @@ class ReelsAccessibilityService : AccessibilityService() {
         return true
     }
 
-    private fun tryFollow(root: AccessibilityNodeInfo): Boolean {
+    private fun tryFollowOnReel(root: AccessibilityNodeInfo): Boolean {
         val expected = cur.screen?.user ?: return false
         val s = ReelScreenReader.read(root, screenW, screenH)
         if (s.following) return false

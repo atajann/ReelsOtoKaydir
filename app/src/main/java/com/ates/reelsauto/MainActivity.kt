@@ -71,6 +71,8 @@ class MainActivity : AppCompatActivity() {
         bindSwitch(R.id.swCaption, prefs.captionExpand) { prefs.captionExpand = it }
         bindSwitch(R.id.swLikeAds, prefs.likeAds) { prefs.likeAds = it }
         bindSwitch(R.id.swFollow, prefs.autoFollow) { prefs.autoFollow = it }
+        bindSwitch(R.id.swProfileCheck, prefs.profileCheck) { prefs.profileCheck = it }
+        bindSwitch(R.id.swCommentPeek, prefs.commentPeek) { prefs.commentPeek = it }
         bindSwitch(R.id.swRewatch, prefs.rewatchEnabled) { prefs.rewatchEnabled = it }
         bindSwitch(R.id.swBreaks, prefs.breaksEnabled) { prefs.breaksEnabled = it }
         bindSwitch(R.id.swLog, prefs.logEnabled) { prefs.logEnabled = it }
@@ -175,7 +177,8 @@ class MainActivity : AppCompatActivity() {
         statLikes.text = prefs.likesToday.toString() + "/" + prefs.dailyLikeCap
         statFollows.text = prefs.followsToday.toString()
         txtStatsExtra.text = prefs.langSkipsToday.toString() + " yabancı dil geçildi  •  " +
-                prefs.rewatchesToday + " tekrar izleme  •  " + accounts.productAccountCount() + " ürün hesabı tanındı"
+                prefs.rewatchesToday + " tekrar izleme  •  " + prefs.profileVisitsToday + " profil incelendi  •  " +
+                prefs.commentPeeksToday + " yorum kontrolü  •  " + accounts.productAccountCount() + " ürün hesabı tanındı"
         val last = prefs.lastProduct
         txtLast.text = if (last.isEmpty()) "Henüz ürün videosu tespit edilmedi." else last
         btnFollowed.text = "Takip edilen hesaplar (" + accounts.followedList().size + ")"
@@ -184,7 +187,7 @@ class MainActivity : AppCompatActivity() {
     private fun showFollowed() {
         val list = accounts.followedList()
         val b = MaterialAlertDialogBuilder(this).setTitle("Takip edilen hesaplar")
-        if (list.isEmpty()) b.setMessage("Henüz otomatik takip edilen hesap yok.")
+        if (list.isEmpty()) b.setMessage("Henüz otomatik takip edilen hesap yok.\n\nReferans hesaplar: " + ProfileAnalyzer.SEEDS.joinToString(", ") { "@" + it })
         else b.setItems(list.toTypedArray(), null)
         b.setPositiveButton("Tamam", null).show()
     }

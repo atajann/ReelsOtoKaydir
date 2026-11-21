@@ -81,6 +81,13 @@ class Gestures(private val svc: AccessibilityService, private val w: Int, privat
         seg(0, null)
     }
 
+    /** Sol kenardan içeri kaydırma: hareketle gezinmede "geri" (yedek yöntem) */
+    fun edgeBack(onDone: (() -> Unit)? = null) {
+        val y = h * HumanTiming.nextFloat(0.45f, 0.6f)
+        val p = Path().apply { moveTo(2f, y); lineTo(w * HumanTiming.nextFloat(0.35f, 0.5f), y + HumanTiming.nextInt(-20, 20)) }
+        dispatch(GestureDescription.Builder().addStroke(GestureDescription.StrokeDescription(p, 0, HumanTiming.between(180, 260))).build(), onDone)
+    }
+
     /** Ekranda rastgele bir noktaya çift dokunma (beğeni) */
     fun doubleTap() {
         val x = w / 2f + HumanTiming.nextInt(-w / 5, w / 5)
