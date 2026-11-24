@@ -1,93 +1,123 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/rs_bg"
-    android:fillViewport="true">
+    android:orientation="vertical">
 
-    <LinearLayout
+    <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:paddingStart="16dp"
-        android:paddingTop="20dp"
-        android:paddingEnd="16dp"
-        android:paddingBottom="28dp">
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:fillViewport="true">
 
-        <!-- Başlık -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="@drawable/bg_header"
             android:orientation="vertical"
-            android:padding="22dp">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="ReelScout"
-                android:textColor="#FFFFFF"
-                android:textSize="28sp"
-                android:textStyle="bold" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
-                android:alpha="0.85"
-                android:text="Akıllı ürün videosu avcısı"
-                android:textColor="#FFFFFF"
-                android:textSize="14sp" />
+            android:paddingStart="16dp"
+            android:paddingTop="18dp"
+            android:paddingEnd="16dp"
+            android:paddingBottom="20dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="18dp"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
-
+                android:background="@drawable/bg_header"
+                android:orientation="vertical"
+                android:padding="22dp">
                 <TextView
-                    android:id="@+id/txtStatusChip"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:background="@drawable/bg_chip"
-                    android:paddingStart="14dp"
-                    android:paddingTop="7dp"
-                    android:paddingEnd="14dp"
-                    android:paddingBottom="7dp"
-                    android:text="● Hazır"
+                    android:text="ReelScout"
                     android:textColor="#FFFFFF"
-                    android:textSize="13sp"
+                    android:textSize="28sp"
                     android:textStyle="bold" />
-
-                <Space
-                    android:layout_width="0dp"
-                    android:layout_height="1dp"
-                    android:layout_weight="1" />
-
-                <com.google.android.material.materialswitch.MaterialSwitch
-                    android:id="@+id/swEnabled"
+                <TextView
                     android:layout_width="wrap_content"
-                    android:layout_height="wrap_content" />
+                    android:layout_height="wrap_content"
+                    android:alpha="0.85"
+                    android:text="Hesap ısındırma ve ürün avcısı"
+                    android:textColor="#FFFFFF"
+                    android:textSize="14sp" />
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="18dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+                    <TextView
+                        android:id="@+id/txtStatusChip"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:background="@drawable/bg_chip"
+                        android:ellipsize="end"
+                        android:maxLines="1"
+                        android:paddingStart="14dp"
+                        android:paddingTop="7dp"
+                        android:paddingEnd="14dp"
+                        android:paddingBottom="7dp"
+                        android:text="●  Hazır"
+                        android:textColor="#FFFFFF"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+                    <com.google.android.material.materialswitch.MaterialSwitch
+                        android:id="@+id/swEnabled"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="12dp" />
+                </LinearLayout>
             </LinearLayout>
-        </LinearLayout>
 
-        <!-- İzin uyarısı -->
-        <com.google.android.material.card.MaterialCardView
-            android:id="@+id/cardPermission"
-            style="@style/RS.Card"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="14dp"
-            app:strokeColor="@color/rs_warning">
-
-            <LinearLayout
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/cardBlock"
+                style="@style/RS.Card"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="18dp">
+                android:layout_marginTop="12dp">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="18dp">
+                <TextView
+                    style="@style/RS.SectionTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="⚠️ Instagram kısıtlaması algılandı" />
 
+                <TextView
+                    android:id="@+id/txtBlockInfo"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:lineSpacingExtra="2dp"
+                    android:text="Instagram bir işlem uyarısı gösterdi. Hesabını korumak için ReelScout 24 saat boyunca çalışmaz. Bu sürede hesabı elle, normal kullan."
+                    android:textColor="@color/rs_text_dim"
+                    android:textSize="12sp" />
+                <Button
+                    android:id="@+id/btnClearBlock"
+                    style="@style/Widget.Material3.Button.TextButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="Uyarıyı sıfırla (önerilmez)" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/cardPermission"
+                style="@style/RS.Card"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="18dp">
                 <TextView
                     style="@style/RS.SectionTitle"
                     android:layout_width="wrap_content"
@@ -95,12 +125,14 @@
                     android:text="Erişilebilirlik izni gerekli" />
 
                 <TextView
+                    
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="ReelScout\'un Reels ekranını okuyabilmesi için erişilebilirlik servisini aç. Android 13+ için önce Ayarlar → Uygulamalar → ReelScout → ⋮ → Kısıtlanmış ayarlara izin ver."
+                    android:layout_marginTop="4dp"
+                    android:lineSpacingExtra="2dp"
+                    android:text="Android 13+ için önce: Ayarlar → Uygulamalar → ReelScout → ⋮ → Kısıtlanmış ayarlara izin ver. Sonra erişilebilirlikten ReelScout\'u aç."
                     android:textColor="@color/rs_text_dim"
-                    android:textSize="13sp" />
-
+                    android:textSize="12sp" />
                 <Button
                     android:id="@+id/btnAccessibility"
                     style="@style/Widget.Material3.Button.TonalButton"
@@ -108,488 +140,768 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
                     android:text="İzin ver" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <TextView
+                style="@style/RS.Label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="4dp"
+                android:layout_marginTop="20dp"
+                android:text="MOD"
+                android:textStyle="bold" />
+            <com.google.android.material.button.MaterialButtonToggleGroup
+                android:id="@+id/tgMode"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                app:selectionRequired="true"
+                app:singleSelection="true">
+                <Button
+                    android:id="@+id/btnModeWarm"
+                    style="?attr/materialButtonOutlinedStyle"
+                    android:layout_width="0dp"
+                    android:layout_height="56dp"
+                    android:layout_weight="1"
+                    android:text="🔥 Hesap Isındırma" />
+                <Button
+                    android:id="@+id/btnModeProduct"
+                    style="?attr/materialButtonOutlinedStyle"
+                    android:layout_width="0dp"
+                    android:layout_height="56dp"
+                    android:layout_weight="1"
+                    android:text="🛍️ Ürün Bulma" />
+            </com.google.android.material.button.MaterialButtonToggleGroup>
+            <TextView
+                android:id="@+id/txtModeHint"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="4dp"
+                android:layout_marginTop="6dp"
+                android:textColor="@color/rs_text_dim"
+                android:textSize="12sp" />
+
+            <TextView
+                style="@style/RS.Label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="4dp"
+                android:layout_marginTop="18dp"
+                android:text="BUGÜN"
+                android:textStyle="bold" />
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_margin="5dp"
+                    android:background="@drawable/bg_tile"
+                    android:orientation="vertical"
+                    android:padding="14dp">
+                    <TextView android:id="@+id/statReels" style="@style/RS.StatValue" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="0" />
+                    <TextView  style="@style/RS.StatLabel" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="İzlenen Reels" />
+                </LinearLayout>
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_margin="5dp"
+                    android:background="@drawable/bg_tile"
+                    android:orientation="vertical"
+                    android:padding="14dp">
+                    <TextView android:id="@+id/statProducts" style="@style/RS.StatValue" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="0" />
+                    <TextView android:id="@+id/lblStatProducts" style="@style/RS.StatLabel" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Ürün videosu" />
+                </LinearLayout>
             </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_margin="5dp"
+                    android:background="@drawable/bg_tile"
+                    android:orientation="vertical"
+                    android:padding="14dp">
+                    <TextView android:id="@+id/statLikes" style="@style/RS.StatValue" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="0" />
+                    <TextView  style="@style/RS.StatLabel" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Beğeni" />
+                </LinearLayout>
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_margin="5dp"
+                    android:background="@drawable/bg_tile"
+                    android:orientation="vertical"
+                    android:padding="14dp">
+                    <TextView android:id="@+id/statFollows" style="@style/RS.StatValue" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="0" />
+                    <TextView android:id="@+id/lblStatFollows" style="@style/RS.StatLabel" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Takip" />
+                </LinearLayout>
+            </LinearLayout>
+            <TextView
+                android:id="@+id/txtStatsExtra"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:layout_marginTop="4dp"
+                android:textColor="@color/rs_text_dim"
+                android:textSize="12sp" />
 
-        <!-- İstatistikler -->
-        <TextView
-            style="@style/RS.Label"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
-            android:layout_marginStart="4dp"
-            android:text="BUGÜN"
-            android:textStyle="bold" />
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:orientation="horizontal">
-        <LinearLayout
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:layout_margin="5dp"
-            android:background="@drawable/bg_tile"
-            android:orientation="vertical"
-            android:padding="14dp">
-            <TextView
-                android:id="@+id/statReels"
-                style="@style/RS.StatValue"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="0" />
-            <TextView
-                style="@style/RS.StatLabel"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="İzlenen Reels" />
-        </LinearLayout>
-        <LinearLayout
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:layout_margin="5dp"
-            android:background="@drawable/bg_tile"
-            android:orientation="vertical"
-            android:padding="14dp">
-            <TextView
-                android:id="@+id/statProducts"
-                style="@style/RS.StatValue"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="0" />
-            <TextView
-                style="@style/RS.StatLabel"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Ürün videosu" />
-        </LinearLayout>
-        </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal">
-        <LinearLayout
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:layout_margin="5dp"
-            android:background="@drawable/bg_tile"
-            android:orientation="vertical"
-            android:padding="14dp">
-            <TextView
-                android:id="@+id/statLikes"
-                style="@style/RS.StatValue"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="0" />
-            <TextView
-                style="@style/RS.StatLabel"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Beğeni" />
-        </LinearLayout>
-        <LinearLayout
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:layout_margin="5dp"
-            android:background="@drawable/bg_tile"
-            android:orientation="vertical"
-            android:padding="14dp">
-            <TextView
-                android:id="@+id/statFollows"
-                style="@style/RS.StatValue"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="0" />
-            <TextView
-                style="@style/RS.StatLabel"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Takip" />
-        </LinearLayout>
-        </LinearLayout>
-
-        <TextView
-            android:id="@+id/txtStatsExtra"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="6dp"
-            android:layout_marginTop="4dp"
-            android:textColor="@color/rs_text_dim"
-            android:textSize="12sp" />
-
-        <com.google.android.material.card.MaterialCardView
-            style="@style/RS.Card"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="14dp">
             <LinearLayout
+                android:id="@+id/containerWarm"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="18dp">
+                android:visibility="gone">
+            <com.google.android.material.card.MaterialCardView
+                
+                style="@style/RS.Card"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="18dp">
+                <TextView
+                    style="@style/RS.SectionTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Dil" />
+
+                <TextView
+                    
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:lineSpacingExtra="2dp"
+                    android:text="Isındırma sırasında sadece bu dildeki videolarla etkileşim kurulur; diğerleri doğal bir hızla geçilir."
+                    android:textColor="@color/rs_text_dim"
+                    android:textSize="12sp" />
+                <com.google.android.material.chip.ChipGroup
+                    android:id="@+id/chipsWarmLang"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    app:chipSpacingHorizontal="6dp"
+                    app:selectionRequired="true"
+                    app:singleSelection="true" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+            <com.google.android.material.card.MaterialCardView
+                
+                style="@style/RS.Card"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="18dp">
+                <TextView
+                    style="@style/RS.SectionTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="İlgi alanları" />
+
+                <TextView
+                    
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:lineSpacingExtra="2dp"
+                    android:text="Hesabın hangi konularla ilgilendiğini Instagram\'a öğretir. Bu kelimeleri içeren videolar daha uzun izlenir ve daha sık beğenilir."
+                    android:textColor="@color/rs_text_dim"
+                    android:textSize="12sp" />
+                <com.google.android.material.textfield.TextInputLayout
+                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:hint="Örn: motorcycle, biker, harley, gadgets">
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/edtInterests"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="textMultiLine|textNoSuggestions"
+                        android:minLines="2"
+                        android:textSize="14sp" />
+                </com.google.android.material.textfield.TextInputLayout>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+            <com.google.android.material.card.MaterialCardView
+                
+                style="@style/RS.Card"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="18dp">
+                <TextView
+                    style="@style/RS.SectionTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Etkileşim" />
+
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/swWarmLike"
+                    style="@style/RS.Switch"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Videoları beğen" />
+                <TextView
+                    android:id="@+id/lblWarmLike"
+                    style="@style/RS.Label"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Beğenme olasılığı" />
+                <com.google.android.material.slider.Slider
+                    android:id="@+id/sliderWarmLike"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:valueFrom="0"
+                    android:valueTo="60"
+                    android:stepSize="5" />
+                <TextView
+                    android:id="@+id/lblWarmDaily"
+                    style="@style/RS.Label"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Günlük beğeni hedefi" />
+                <com.google.android.material.slider.Slider
+                    android:id="@+id/sliderWarmDaily"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:valueFrom="0"
+                    android:valueTo="200"
+                    android:stepSize="10" />
+                <TextView
+                    android:id="@+id/lblWarmHourly"
+                    style="@style/RS.Label"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Saatlik beğeni sınırı" />
+                <com.google.android.material.slider.Slider
+                    android:id="@+id/sliderWarmHourly"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:valueFrom="0"
+                    android:valueTo="40"
+                    android:stepSize="1" />
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/swWarmRamp"
+                    style="@style/RS.Switch"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Kademeli artış (7 günde tam hedefe)" />
+                <TextView
+                    android:id="@+id/txtRampInfo"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:lineSpacingExtra="2dp"
+                    android:text=""
+                    android:textColor="@color/rs_text_dim"
+                    android:textSize="12sp" />
+                <TextView
+                    android:id="@+id/lblWarmWatch"
+                    style="@style/RS.Label"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="İzleme süresi" />
+                <com.google.android.material.slider.RangeSlider
+                    android:id="@+id/rangeWarmWatch"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:valueFrom="2"
+                    android:valueTo="60"
+                    android:stepSize="1" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/containerProduct"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="visible">
+            <com.google.android.material.card.MaterialCardView
+                
+                style="@style/RS.Card"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="18dp">
                 <TextView
                     style="@style/RS.SectionTitle"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Son tespit edilen ürün" />
 
-            <TextView
-                android:id="@+id/txtLast"
+                <TextView
+                    android:id="@+id/txtLast"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:lineSpacingExtra="2dp"
+                    android:text=""
+                    android:textColor="@color/rs_text_dim"
+                    android:textSize="12sp" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+            <com.google.android.material.card.MaterialCardView
+                
+                style="@style/RS.Card"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:textColor="@color/rs_text_dim"
-                android:textSize="12sp" />
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
+                android:layout_marginTop="12dp">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="18dp">
+                <TextView
+                    style="@style/RS.SectionTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Dil" />
 
-        <com.google.android.material.card.MaterialCardView
-            style="@style/RS.Card"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="14dp">
-            <LinearLayout
+                <TextView
+                    
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:lineSpacingExtra="2dp"
+                    android:text="Sadece bu dildeki ürün videoları incelenir; diğerleri hemen geçilir."
+                    android:textColor="@color/rs_text_dim"
+                    android:textSize="12sp" />
+                <com.google.android.material.chip.ChipGroup
+                    android:id="@+id/chipsProdLang"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    app:chipSpacingHorizontal="6dp"
+                    app:selectionRequired="true"
+                    app:singleSelection="true" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+            <com.google.android.material.card.MaterialCardView
+                
+                style="@style/RS.Card"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="18dp">
+                android:layout_marginTop="12dp">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="18dp">
+                <TextView
+                    style="@style/RS.SectionTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Anahtar kelimeler" />
+
+                <TextView
+                    
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:lineSpacingExtra="2dp"
+                    android:text="Aradığın ürünleri yaz (virgülle ayır). Açıklama, hashtag, videodaki yazılar ve hesap adında aranır."
+                    android:textColor="@color/rs_text_dim"
+                    android:textSize="12sp" />
+                <com.google.android.material.textfield.TextInputLayout
+                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:hint="Örn: wing light, motorcycle, led, christmas">
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/edtKeywords"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="textMultiLine|textNoSuggestions"
+                        android:minLines="2"
+                        android:textSize="14sp" />
+                </com.google.android.material.textfield.TextInputLayout>
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/swKeywordRequired"
+                    style="@style/RS.Switch"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Sadece bu kelimelere uyan ürünlerle etkileşim" />
+                <com.google.android.material.textfield.TextInputLayout
+                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:hint="Hariç tut: örn. dress, makeup, food">
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/edtExclude"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="textMultiLine|textNoSuggestions"
+                        android:minLines="1"
+                        android:textSize="14sp" />
+                </com.google.android.material.textfield.TextInputLayout>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+            <com.google.android.material.card.MaterialCardView
+                
+                style="@style/RS.Card"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="18dp">
                 <TextView
                     style="@style/RS.SectionTitle"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Ürün tespiti" />
 
-            <TextView
+                <TextView
+                    
+                    style="@style/RS.Label"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Hassasiyet" />
+                <com.google.android.material.button.MaterialButtonToggleGroup
+                    android:id="@+id/tgSensitivity"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    app:selectionRequired="true"
+                    app:singleSelection="true">
+                    <Button
+                        android:id="@+id/btnStrict"
+                        style="?attr/materialButtonOutlinedStyle"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Sıkı" />
+                    <Button
+                        android:id="@+id/btnBalanced"
+                        style="?attr/materialButtonOutlinedStyle"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Dengeli" />
+                    <Button
+                        android:id="@+id/btnBroad"
+                        style="?attr/materialButtonOutlinedStyle"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Geniş" />
+                </com.google.android.material.button.MaterialButtonToggleGroup>
+                <TextView
+                    android:id="@+id/txtSensitivityHint"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:lineSpacingExtra="2dp"
+                    android:text=""
+                    android:textColor="@color/rs_text_dim"
+                    android:textSize="12sp" />
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/swLike"
+                    style="@style/RS.Switch"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Ürün videolarını beğen" />
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/swCaption"
+                    style="@style/RS.Switch"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Açıklamanın devamını aç ve oku" />
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/swCommentPeek"
+                    style="@style/RS.Switch"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Emin olunamayanlarda yorumlara göz at" />
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/swLikeAds"
+                    style="@style/RS.Switch"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Sponsorlu ürünleri de beğen" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+            <com.google.android.material.card.MaterialCardView
                 
-                style="@style/RS.Label"
+                style="@style/RS.Card"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Hassasiyet" />
-            <com.google.android.material.button.MaterialButtonToggleGroup
-                android:id="@+id/tgSensitivity"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                app:selectionRequired="true"
-                app:singleSelection="true">
-                <Button
-                    android:id="@+id/btnStrict"
-                    style="?attr/materialButtonOutlinedStyle"
-                    android:layout_width="0dp"
+                android:layout_marginTop="12dp">
+                <LinearLayout
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="Sıkı" />
-                <Button
-                    android:id="@+id/btnBalanced"
-                    style="?attr/materialButtonOutlinedStyle"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="Dengeli" />
-                <Button
-                    android:id="@+id/btnBroad"
-                    style="?attr/materialButtonOutlinedStyle"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="Geniş" />
-            </com.google.android.material.button.MaterialButtonToggleGroup>
-            <TextView
-                android:id="@+id/txtSensitivityHint"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:textColor="@color/rs_text_dim"
-                android:textSize="12sp" />
-            <com.google.android.material.materialswitch.MaterialSwitch
-                android:id="@+id/swLike"
-                style="@style/RS.Switch"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Ürün videolarını beğen" />
-            <com.google.android.material.materialswitch.MaterialSwitch
-                android:id="@+id/swEnglish"
-                style="@style/RS.Switch"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Sadece İngilizce videolar" />
-            <com.google.android.material.materialswitch.MaterialSwitch
-                android:id="@+id/swSkipUnknown"
-                style="@style/RS.Switch"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Yazısız videoları geç" />
-            <com.google.android.material.materialswitch.MaterialSwitch
-                android:id="@+id/swCaption"
-                style="@style/RS.Switch"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Açıklamanın devamını aç ve oku" />
-            <com.google.android.material.materialswitch.MaterialSwitch
-                android:id="@+id/swCommentPeek"
-                style="@style/RS.Switch"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Emin olunamayanlarda yorumlara göz at" />
-            <com.google.android.material.materialswitch.MaterialSwitch
-                android:id="@+id/swLikeAds"
-                style="@style/RS.Switch"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Sponsorlu ürünleri de beğen" />
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
-
-        <com.google.android.material.card.MaterialCardView
-            style="@style/RS.Card"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="14dp">
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="18dp">
+                    android:orientation="vertical"
+                    android:padding="18dp">
                 <TextView
                     style="@style/RS.SectionTitle"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Otomatik takip" />
 
-            <com.google.android.material.materialswitch.MaterialSwitch
-                android:id="@+id/swFollow"
-                style="@style/RS.Switch"
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/swFollow"
+                    style="@style/RS.Switch"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Ürün hesaplarını takip et" />
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/swProfileCheck"
+                    style="@style/RS.Switch"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Takipten önce profili incele" />
+                <TextView
+                    
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:lineSpacingExtra="2dp"
+                    android:text="Kullanıcı adına dokunup bio, link ve takip sayısına bakar; referans hesaplara benziyorsa takip eder ve Reels\'e geri döner."
+                    android:textColor="@color/rs_text_dim"
+                    android:textSize="12sp" />
+                <TextView
+                    
+                    style="@style/RS.Label"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Takip için gereken ürün videosu" />
+                <com.google.android.material.button.MaterialButtonToggleGroup
+                    android:id="@+id/tgFollowNeed"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    app:selectionRequired="true"
+                    app:singleSelection="true">
+                    <Button
+                        android:id="@+id/btnNeed1"
+                        style="?attr/materialButtonOutlinedStyle"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="1" />
+                    <Button
+                        android:id="@+id/btnNeed2"
+                        style="?attr/materialButtonOutlinedStyle"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="2" />
+                    <Button
+                        android:id="@+id/btnNeed3"
+                        style="?attr/materialButtonOutlinedStyle"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="3" />
+                </com.google.android.material.button.MaterialButtonToggleGroup>
+                <TextView
+                    android:id="@+id/lblFollowCap"
+                    style="@style/RS.Label"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Günlük takip sınırı" />
+                <com.google.android.material.slider.Slider
+                    android:id="@+id/sliderFollowCap"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:valueFrom="0"
+                    android:valueTo="30"
+                    android:stepSize="1" />
+                <Button
+                    android:id="@+id/btnFollowed"
+                    style="@style/Widget.Material3.Button.TextButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="Takip edilen hesaplar" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+            <com.google.android.material.card.MaterialCardView
+                
+                style="@style/RS.Card"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Ürün hesaplarını takip et" />
-            <com.google.android.material.materialswitch.MaterialSwitch
-                android:id="@+id/swProfileCheck"
-                style="@style/RS.Switch"
+                android:layout_marginTop="12dp">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="18dp">
+                <TextView
+                    style="@style/RS.SectionTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Etkileşim ve limitler" />
+
+                <TextView
+                    android:id="@+id/lblWatch"
+                    style="@style/RS.Label"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="İzleme süresi" />
+                <com.google.android.material.slider.RangeSlider
+                    android:id="@+id/rangeWatch"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:valueFrom="2"
+                    android:valueTo="60"
+                    android:stepSize="1" />
+                <TextView
+                    android:id="@+id/lblLikeChance"
+                    style="@style/RS.Label"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Ürün videosunu beğenme olasılığı" />
+                <com.google.android.material.slider.Slider
+                    android:id="@+id/sliderLike"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:valueFrom="0"
+                    android:valueTo="100"
+                    android:stepSize="5" />
+                <TextView
+                    android:id="@+id/lblDaily"
+                    style="@style/RS.Label"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Günlük beğeni sınırı" />
+                <com.google.android.material.slider.Slider
+                    android:id="@+id/sliderDaily"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:valueFrom="0"
+                    android:valueTo="300"
+                    android:stepSize="10" />
+                <TextView
+                    android:id="@+id/lblHourly"
+                    style="@style/RS.Label"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Saatlik beğeni sınırı" />
+                <com.google.android.material.slider.Slider
+                    android:id="@+id/sliderHourly"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:valueFrom="0"
+                    android:valueTo="60"
+                    android:stepSize="1" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+            </LinearLayout>
+
+            <com.google.android.material.card.MaterialCardView
+                
+                style="@style/RS.Card"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Takipten önce profili incele" />
+                android:layout_marginTop="12dp">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="18dp">
+                <TextView
+                    style="@style/RS.SectionTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Genel" />
+
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/swSkipUnknown"
+                    style="@style/RS.Switch"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Dili anlaşılmayan (yazısız) videoları geç" />
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/swRewatch"
+                    style="@style/RS.Switch"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Ara sıra geri dönüp tekrar izle" />
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/swBreaks"
+                    style="@style/RS.Switch"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Rastgele molalar ver" />
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/swLog"
+                    style="@style/RS.Switch"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Her Reels analizini kaydet (CSV)" />
+                <Button
+                    android:id="@+id/btnExport"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="Analiz dosyasını dışa aktar" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
             <TextView
+                android:id="@+id/txtInfo"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Kullanıcı adına dokunup bio, link ve takip sayısına bakar; referans hesaplara benziyorsa takip eder ve Reels\'e geri döner."
+                android:layout_marginTop="14dp"
+                android:gravity="center"
+                android:lineSpacingExtra="3dp"
                 android:textColor="@color/rs_text_dim"
                 android:textSize="12sp" />
-            <TextView
-                
-                style="@style/RS.Label"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Takip için gereken kesin ürün videosu" />
-            <com.google.android.material.button.MaterialButtonToggleGroup
-                android:id="@+id/tgFollowNeed"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                app:selectionRequired="true"
-                app:singleSelection="true">
-                <Button
-                    android:id="@+id/btnNeed1"
-                    style="?attr/materialButtonOutlinedStyle"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="1" />
-                <Button
-                    android:id="@+id/btnNeed2"
-                    style="?attr/materialButtonOutlinedStyle"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="2" />
-                <Button
-                    android:id="@+id/btnNeed3"
-                    style="?attr/materialButtonOutlinedStyle"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="3" />
-            </com.google.android.material.button.MaterialButtonToggleGroup>
-            <TextView
-                android:id="@+id/lblFollowCap"
-                style="@style/RS.Label"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Günlük takip sınırı" />
-            <com.google.android.material.slider.Slider
-                android:id="@+id/sliderFollowCap"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:valueFrom="0"
-                android:valueTo="30"
-                android:stepSize="1" />
-            <Button
-                android:id="@+id/btnFollowed"
-                style="@style/Widget.Material3.Button.TextButton"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:text="Takip edilen hesaplar" />
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
+        </LinearLayout>
+    </ScrollView>
 
-        <com.google.android.material.card.MaterialCardView
-            style="@style/RS.Card"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="14dp">
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="18dp">
-                <TextView
-                    style="@style/RS.SectionTitle"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="İnsan gibi davranış" />
-
-            <TextView
-                android:id="@+id/lblWatch"
-                style="@style/RS.Label"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="İzleme süresi" />
-            <com.google.android.material.slider.RangeSlider
-                android:id="@+id/rangeWatch"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:valueFrom="2"
-                android:valueTo="60"
-                android:stepSize="1" />
-            <TextView
-                android:id="@+id/lblLikeChance"
-                style="@style/RS.Label"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Ürün videosunu beğenme olasılığı" />
-            <com.google.android.material.slider.Slider
-                android:id="@+id/sliderLike"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:valueFrom="0"
-                android:valueTo="100"
-                android:stepSize="5" />
-            <com.google.android.material.materialswitch.MaterialSwitch
-                android:id="@+id/swRewatch"
-                style="@style/RS.Switch"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Ara sıra geri dönüp tekrar izle" />
-            <com.google.android.material.materialswitch.MaterialSwitch
-                android:id="@+id/swBreaks"
-                style="@style/RS.Switch"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Rastgele molalar ver" />
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
-
-        <com.google.android.material.card.MaterialCardView
-            style="@style/RS.Card"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="14dp">
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="18dp">
-                <TextView
-                    style="@style/RS.SectionTitle"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Güvenlik limitleri" />
-
-            <TextView
-                android:id="@+id/lblDaily"
-                style="@style/RS.Label"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Günlük beğeni" />
-            <com.google.android.material.slider.Slider
-                android:id="@+id/sliderDaily"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:valueFrom="0"
-                android:valueTo="300"
-                android:stepSize="10" />
-            <TextView
-                android:id="@+id/lblHourly"
-                style="@style/RS.Label"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Saatlik beğeni" />
-            <com.google.android.material.slider.Slider
-                android:id="@+id/sliderHourly"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:valueFrom="0"
-                android:valueTo="60"
-                android:stepSize="1" />
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
-
-        <com.google.android.material.card.MaterialCardView
-            style="@style/RS.Card"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="14dp">
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="18dp">
-                <TextView
-                    style="@style/RS.SectionTitle"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Analiz verisi" />
-
-            <com.google.android.material.materialswitch.MaterialSwitch
-                android:id="@+id/swLog"
-                style="@style/RS.Switch"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Her Reels analizini kaydet (CSV)" />
-            <Button
-                android:id="@+id/btnExport"
-                style="@style/Widget.Material3.Button.OutlinedButton"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="Analiz dosyasını dışa aktar" />
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
-
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/rs_surface"
+        android:elevation="8dp"
+        android:orientation="horizontal"
+        android:paddingStart="16dp"
+        android:paddingTop="10dp"
+        android:paddingEnd="16dp"
+        android:paddingBottom="12dp">
+        <Button
+            android:id="@+id/btnSave"
+            style="@style/Widget.Material3.Button.TonalButton"
+            android:layout_width="0dp"
+            android:layout_height="56dp"
+            android:layout_marginEnd="10dp"
+            android:layout_weight="1"
+            android:text="Kaydet"
+            app:cornerRadius="16dp" />
         <Button
             android:id="@+id/btnOpenInstagram"
             style="@style/Widget.Material3.Button"
-            android:layout_width="match_parent"
-            android:layout_height="60dp"
-            android:layout_marginTop="22dp"
-            android:text="Instagram\'ı aç ve başlat"
+            android:layout_width="0dp"
+            android:layout_height="56dp"
+            android:layout_weight="1.3"
+            android:text="▶  Başlat"
             android:textSize="16sp"
-            app:cornerRadius="18dp" />
-
-        <TextView
-            android:id="@+id/txtInfo"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="14dp"
-            android:gravity="center"
-            android:lineSpacingExtra="3dp"
-            android:textColor="@color/rs_text_dim"
-            android:textSize="12sp" />
+            app:cornerRadius="16dp" />
     </LinearLayout>
-</ScrollView>
+</LinearLayout>

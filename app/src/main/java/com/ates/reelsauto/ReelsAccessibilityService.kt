@@ -64,6 +64,7 @@ class ReelsAccessibilityService : AccessibilityService() {
         var verdict: ProductVerdict? = null
         val frameTimes = mutableListOf<Long>()
         var profileNote = ""
+        var warmInterest = false
     }
 
     private lateinit var prefs: Prefs
@@ -126,6 +127,20 @@ class ReelsAccessibilityService : AccessibilityService() {
     private var screenW = 1080
     private var screenH = 1920
 
+    // Başlatma güvenilirliği ve kısıtlama tespiti
+    private var startRequestedAt = 0L
+    private var lastStartToken = 0L
+    private var lastReelsTabTry = 0L
+    private var nextBlockCheck = 0L
+    private val BLOCK_PHRASES = listOf(
+        "try again later", "daha sonra tekrar dene", "we restrict certain activity", "belirli etkinlikleri kısıtlıyoruz",
+        "bazı etkinlikleri kısıtlıyoruz", "action blocked", "işlem engellendi", "your account has been temporarily",
+        "hesabın geçici olarak", "we limit how often", "ne sıklıkta yapabileceğini sınırlıyoruz"
+    )
+    private val prefListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+        if (key == "start_token") handler.post { onStartRequested() }
+    }
+
     private val visionAvailable get() = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && vision != null
 
     // ================================================================ yaşam döngüsü
@@ -138,12 +153,15 @@ class ReelsAccessibilityService : AccessibilityService() {
         vision = try { VisionHelper() } catch (e: Throwable) { Log.w(TAG, "ML Kit başlatılamadı", e); null }
         readScreenSize()
         gestures = Gestures(this, screenW, screenH)
+        lastStartToken = prefs.startToken
+        prefs.register(prefListener)
         Log.i(TAG, "ReelScout bağlandı (görüntü analizi: $visionAvailable)")
     }
 
     override fun onInterrupt() = stopTicking()
 
     override fun onDestroy() {
+        try { prefs.unregister(prefListener) } catch (e: Exception) { }
         stopTicking()
         vision?.close()
         super.onDestroy()
@@ -159,6 +177,17 @@ class ReelsAccessibilityService : AccessibilityService() {
         }
         if (exc != Exc.NONE) return   // gezinti sırasında Reels algılaması askıda
         val now = SystemClock.uptimeMillis()
+
+        if (onReels && !ticking) startTicking()   // döngü durmuşsa kendini toparla
+        // "Başlat"a basıldıysa ve Instagram Reels dışında açıldıysa Reels sekmesine geç
+        if (!onReels && now - startRequestedAt < 25_000 && now - lastReelsTabTry > 2_500) {
+            val r = rootInActiveWindow
+            if (r != null && r.packageName?.toString() == IG_PACKAGE && !isReelsScreen(r)) {
+                lastReelsTabTry = now
+                clickReelsTab(r)
+                reelsTabUsed = false
+            }
+        }
 
         if (event.eventType == AccessibilityEvent.TYPE_VIEW_SCROLLED && onReels && !gestureBusy &&
             phase != Phase.EXPANDING && now - gestures.lastGestureAt > 1500 && now - reelStart > 1000
@@ -197,6 +226,11 @@ class ReelsAccessibilityService : AccessibilityService() {
     }
 
     private fun enterReels() {
+        if (prefs.isBlocked) {
+            toast("⚠️ Instagram kısıtlaması nedeniyle ReelScout beklemede")
+            return
+        }
+        paused = false
         onReels = true
         if (prefs.enabled) toast("▶ ReelScout başladı (Ses kısma = duraklat)")
         startNewReel(Kind.NORMAL)
@@ -208,6 +242,35 @@ class ReelsAccessibilityService : AccessibilityService() {
         gestureBusy = false
         exc = Exc.NONE
         stopTicking()
+    }
+
+    /** Uygulamadaki "Başlat" butonu: her şeyi sıfırla ve Reels'te başla */
+    private fun onStartRequested() {
+        val token = prefs.startToken
+        if (token == lastStartToken) return
+        lastStartToken = token
+        paused = false
+        exc = Exc.NONE
+        excStage = 0
+        gestureBusy = false
+        holdUntil = 0L
+        swipeAfterHold = false
+        startRequestedAt = SystemClock.uptimeMillis()
+        lastReelsTabTry = 0L
+        Log.i(TAG, "Başlat isteği alındı (mod: " + (if (prefs.isWarmup) "ısındırma" else "ürün bulma") + ", dil: " + prefs.targetLang + ")")
+        if (onReels) { startNewReel(Kind.NORMAL); startTicking() } else updateReelsState()
+    }
+
+    /** Instagram "işlem engellendi / daha sonra tekrar dene" uyarısı → 24 saat dur */
+    private fun checkActionBlock(root: AccessibilityNodeInfo): Boolean {
+        val texts = visibleTexts(root, screenW, screenH, 1500)
+        val hit = texts.firstOrNull { t -> val l = t.text.lowercase(); BLOCK_PHRASES.any { l.contains(it) } } ?: return false
+        Log.w(TAG, "Instagram kısıtlaması algılandı: " + hit.text)
+        prefs.blockUntil = System.currentTimeMillis() + 24 * 3_600_000L
+        performGlobalAction(GLOBAL_ACTION_BACK)   // uyarıyı kapat
+        leaveReels()
+        toast("⚠️ Instagram kısıtlaması algılandı. ReelScout 24 saat duracak, hesabı elle normal kullan.")
+        return true
     }
 
     private fun isReelsScreen(root: AccessibilityNodeInfo): Boolean {
@@ -271,10 +334,17 @@ class ReelsAccessibilityService : AccessibilityService() {
         val pm = getSystemService(POWER_SERVICE) as PowerManager
         if (!pm.isInteractive) return
 
+        if (exc != Exc.NONE && now - excStart > EXCURSION_TIMEOUT_MS) { giveUp(); return }
+
         val root = rootInActiveWindow
         if (root == null || root.packageName?.toString() != IG_PACKAGE) {
             if (exc == Exc.NONE) leaveReels()
             return
+        }
+
+        if (now >= nextBlockCheck) {
+            nextBlockCheck = now + 5_000
+            if (checkActionBlock(root)) return
         }
 
         if (exc != Exc.NONE) { stepExcursion(root, now); return }
@@ -536,8 +606,10 @@ class ReelsAccessibilityService : AccessibilityService() {
     private fun giveUp() {
         exc = Exc.NONE
         excStage = 0
-        paused = true
-        toast("ReelScout Reels'e geri dönemedi ve duraklatıldı. Reels'e dönüp Ses Kısma ile devam ettir.")
+        onReels = false
+        gestureBusy = false
+        stopTicking()
+        toast("ReelScout Reels'e geri dönemedi. Reels sekmesini açınca kendiliğinden devam eder.")
     }
 
     // ================================================================ analiz
@@ -551,7 +623,7 @@ class ReelsAccessibilityService : AccessibilityService() {
 
     private fun runLanguage(id: Int) {
         if (id != reelId || phase != Phase.ANALYZING) return
-        if (!prefs.englishOnly) { decide("-"); return }
+        if (prefs.targetLang == "any") { decide("-"); return }
         val text = (cur.screen?.caption ?: "") + " " + cur.ocr.joinToString(" ")
         val v = vision
         if (v == null) { decide("und"); return }
@@ -561,7 +633,8 @@ class ReelsAccessibilityService : AccessibilityService() {
     private fun decide(lang: String) {
         cur.lang = lang
         val now = SystemClock.uptimeMillis()
-        val pass = !prefs.englishOnly || lang == "en" || (lang == "und" && !prefs.skipUnknown)
+        val target = prefs.targetLang
+        val pass = target == "any" || lang == target || (lang == "und" && !prefs.skipUnknown)
         if (!pass) {
             phase = Phase.SKIPPING
             skipAt = now + HumanTiming.langSkipDelayMs()
@@ -569,6 +642,7 @@ class ReelsAccessibilityService : AccessibilityService() {
             Log.i(TAG, "Dil: $lang → geçiliyor")
             return
         }
+        if (prefs.isWarmup) { decideWarmup(now, lang); return }
 
         val v = evaluateProduct()
         val el = now - reelStart
@@ -588,13 +662,32 @@ class ReelsAccessibilityService : AccessibilityService() {
         Log.i(TAG, "Dil: $lang | ürün: " + v.confidence.label + " (" + v.score + ") " + v.signals + " | mod: " + HumanTiming.mood.label)
     }
 
+    /** Hesap ısındırma: ürün analizi yok; ilgi alanına göre daha uzun izle ve daha sık beğen */
+    private fun decideWarmup(now: Long, lang: String) {
+        val s = cur.screen
+        val text = listOfNotNull(s?.caption, s?.allText, s?.user).joinToString(" ") + " " + cur.ocr.joinToString(" ")
+        val interest = KeywordMatcher.matchAny(text, KeywordMatcher.parse(prefs.interests))
+        cur.warmInterest = interest != null
+        val el = now - reelStart
+        watchMs = el + HumanTiming.watchMs(prefs.minWatchSec, prefs.maxWatchSec, cur.warmInterest)
+        val sponsored = s?.sponsored == true
+        val p = minOf(0.9, prefs.likeChance / 100.0 * (if (cur.warmInterest) 1.8 else 1.0))
+        likeDecided = true
+        if (prefs.likeEnabled && !sponsored && HumanTiming.chance(p)) {
+            likeAtMs = maxOf(el + 1_500, el + ((watchMs - el) * HumanTiming.likeFraction()).toLong())
+        }
+        phase = Phase.WATCHING
+        Log.i(TAG, "Isındırma | dil: $lang | ilgi: " + (interest ?: "-") + " | beğeni planı: " + (likeAtMs >= 0) + " | mod: " + HumanTiming.mood.label)
+    }
+
     private fun evaluateProduct(): ProductVerdict {
         val s = cur.screen
         val text = listOfNotNull(s?.caption, s?.allText).joinToString(" ") + " " + cur.ocr.joinToString(" ")
         val user = s?.user ?: ""
         val history = if (user.isBlank()) 0
             else accounts.get(user).products + (if (user.lowercase() in ProfileAnalyzer.SEEDS) 2 else 0)
-        val v = ProductDetector.evaluate(text, s?.shopButton == true, cur.labels, history, prefs.sensitivity, cur.extras)
+        val ctx = MatchContext(user, s?.metrics ?: emptyList(), prefs.keywords, prefs.excludeKeywords, prefs.keywordRequired)
+        val v = ProductDetector.evaluate(text, s?.shopButton == true, cur.labels, history, prefs.sensitivity, cur.extras, ctx)
         cur.verdict = v
         return v
     }
@@ -627,7 +720,7 @@ class ReelsAccessibilityService : AccessibilityService() {
     private fun planCommentPeek() {
         if (commentDecided || !prefs.commentPeek) return
         val v = cur.verdict ?: return
-        if (v.confidence == Confidence.CERTAIN || v.confidence == Confidence.NONE) return
+        if (v.gated || v.confidence == Confidence.CERTAIN || v.confidence == Confidence.NONE) return
         if (v.strong == 0 && v.ctaKeyword == null) return
         if (cur.screen?.commentButton == null) return
         prune(commentTimes)
@@ -644,6 +737,7 @@ class ReelsAccessibilityService : AccessibilityService() {
     private fun planFollow() {
         if (followDecided || !prefs.autoFollow) return
         val v = cur.verdict ?: return
+        if (v.gated) return
         val s = cur.screen ?: return
         if (s.user.isBlank() || s.following) return
         val key = s.user.lowercase()
@@ -688,12 +782,14 @@ class ReelsAccessibilityService : AccessibilityService() {
     private fun registerLike() {
         likeTimes.addLast(System.currentTimeMillis())
         prefs.addLike()
+        nextBlockCheck = SystemClock.uptimeMillis() + 2_500
     }
 
     private fun registerFollow() {
         followed = true
         followTimes.addLast(System.currentTimeMillis())
         prefs.addFollow()
+        nextBlockCheck = SystemClock.uptimeMillis() + 2_500
         cur.screen?.user?.let { accounts.markFollowed(it) }
         Log.i(TAG, "Takip edildi: " + (cur.screen?.user ?: "?"))
     }
@@ -705,6 +801,7 @@ class ReelsAccessibilityService : AccessibilityService() {
         val worthy = v?.likeWorthy == true
 
         if (result == "izlendi" && v != null) accounts.record(user, v.confidence)
+        if (cur.warmInterest) prefs.addInterest()
         if (worthy) {
             prefs.addProduct()
             prefs.lastProduct = buildString {
@@ -717,7 +814,8 @@ class ReelsAccessibilityService : AccessibilityService() {
             }
         }
         if (prefs.logEnabled) {
-            val signals = (v?.signals ?: emptyList()) + (if (cur.profileNote.isNotEmpty()) listOf(cur.profileNote) else emptyList())
+            val signals = (v?.signals ?: emptyList()) + (if (cur.profileNote.isNotEmpty()) listOf(cur.profileNote) else emptyList()) +
+                    (if (prefs.isWarmup) listOf("isindirma" + (if (cur.warmInterest) ":ilgi" else "")) else emptyList())
             logger.log(
                 ReelRecord(
                     result = result, lang = cur.lang, isProduct = worthy,
@@ -735,7 +833,7 @@ class ReelsAccessibilityService : AccessibilityService() {
         val now = SystemClock.uptimeMillis()
         val wasPrevWorthy = prevWorthy
         val wasPrevWatched = prevWatched
-        prevWorthy = worthy
+        prevWorthy = worthy || cur.warmInterest
         prevWatched = result == "izlendi"
 
         if (prefs.breaksEnabled && sessionEndsAt in 1L until now) {

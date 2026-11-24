@@ -4,7 +4,7 @@
         <item name="colorPrimary">@color/rs_primary</item>
         <item name="colorOnPrimary">#FFFFFF</item>
         <item name="colorPrimaryContainer">@color/rs_primary_container</item>
-        <item name="colorOnPrimaryContainer">#E9DDFF</item>
+        <item name="colorOnPrimaryContainer">#DCE6FF</item>
         <item name="colorSecondary">@color/rs_accent</item>
         <item name="colorSecondaryContainer">@color/rs_primary_container</item>
         <item name="colorOnSecondaryContainer">#FFFFFF</item>

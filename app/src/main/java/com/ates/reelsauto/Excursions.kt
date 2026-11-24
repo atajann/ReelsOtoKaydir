@@ -128,7 +128,7 @@ object CommentAnalyzer {
     data class Result(val keywordHits: Int, val topWord: String?, val buyQuestions: Int, val total: Int)
 
     private val BUY_Q = Regex(
-        """(?:how\s+(?:do|can)\s+i\s+(?:get|buy|order)|where\s+(?:do|can|to)\b.*\b(?:get|buy|order)|where\s+can\s+i|\blink\s*\?|\bprice\b|how\s+much|\bquiero\b|\bcomprar\b|onde\s+compra|wo\s+kann\s+man|\bkaufen\b|i\s+(?:want|need)\s+(?:one|it|this)|eu\s+quero|me\s+interesa|nerden\s+al|nereden|fiyat)""",
+        """(?:how\s+(?:do|can)\s+i\s+(?:get|buy|order)|where\s+(?:do|can|to)\b.*\b(?:get|buy|order)|where\s+can\s+i|\blink\s*\?|\bprice\b|how\s+much|\bquiero\b|\bcomprar\b|onde\s+compra|wo\s+kann\s+man|\bkaufen\b|i\s+(?:want|need)\s+(?:one|it|this)|eu\s+quero|me\s+interesa|nerden\s+al|nereden|fiyat|kaç\s+(?:tl|para)|link(?:i)?\s+(?:at|gönder)|bilgi\s+alabilir|sipariş)""",
         RegexOption.IGNORE_CASE
     )
     private val NOISE = Regex(
